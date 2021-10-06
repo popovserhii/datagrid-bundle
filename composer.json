@@ -1,0 +1,34 @@
+{
+    "name": "popov/datagrid-bundle",
+    "description": "This bundle allows you to integrate ZfcDatagrid into your Symfony project",
+    "keywords": [],
+    "type": "symfony-bundle",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Serhii Popov",
+            "email": "popow.serhii@gmail.com"
+        }
+    ],
+    "require": {
+        "doctrine/orm": "~2.4",
+        "symfony/framework-bundle": "~4.0|~5.0",
+        "symfony/console": "~4.0|~5.0",
+        "symfony/process": "~4.0|~5.0",
+        "symfony/yaml": "~4.0|~5.0",
+        "twig/twig": "^1.28.2|^2.0|^3.0"
+    },
+    "require-dev": {
+        "symfony/doctrine-bridge": "~4.0|~5.0",
+        "symfony/phpunit-bridge": "^3.3"
+    },
+    "autoload": {
+        "psr-4": {
+          "Popov\\DatagridBundle\\": "src/"
+        },
+        "exclude-from-classmap": [
+            "/Tests/"
+        ]
+    },
+    "minimum-stability": "dev"
+}
