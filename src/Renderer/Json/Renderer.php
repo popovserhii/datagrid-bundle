@@ -42,7 +42,7 @@ class Renderer extends JqGridRenderer
     // 'begins with'
     const FILTER_BW = 'bw';
     // 'does not begin with'
-    const FILTER_BN = 'bn';
+    const FILTER_BN = 'nb';
     // 'is in'
     const FILTER_IN = 'in';
     // 'is not in'
@@ -57,6 +57,10 @@ class Renderer extends JqGridRenderer
     const FILTER_NC = 'nc';
     // 'between' (custom one)
     const FILTER_BT = 'bt';
+    // 'NULL' (custom one)
+    const FILTER_NU = 'nu';
+    // 'is not NULL' (custom one)
+    const FILTER_NN = 'nn';
 
     /**
      * List of all available operations
@@ -79,6 +83,8 @@ class Renderer extends JqGridRenderer
         self::FILTER_IN => Filter::IN,
         self::FILTER_NI => Filter::NOT_IN,
         self::FILTER_BT => Filter::BETWEEN,
+        self::FILTER_NU => Filter::NULL,
+        self::FILTER_NN => Filter::NOT_NULL,
     ];
 
     /**
