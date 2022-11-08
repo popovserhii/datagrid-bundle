@@ -230,6 +230,7 @@ class Renderer extends JqGridRenderer
         $data = $this->data;
         foreach ($data as $key => & $row) {
             $index = 0;
+            $entities = [];
             foreach ($this->getColumns() as $column) {
                 if ($column->isSkipped()) {
                     unset($row[$column->getUniqueId()]);
@@ -238,6 +239,8 @@ class Renderer extends JqGridRenderer
                 if ($column instanceof Column\Select) {
                     $entityName = strtok($column->getUniqueId(), '_');
                     $fieldName = substr($column->getUniqueId(), strlen($entityName) + 1);
+
+                    $entities[$entityName] = $entityName; // Life hack to optimize the memory
 
                     // Determine base grid ID to build appropriate JSON hierarchy
                     if (0 === $index && !$gridId) {
@@ -256,6 +259,15 @@ class Renderer extends JqGridRenderer
                     }
                 }
                 $index++;
+            }
+
+            // Convert an entity with all empty fields to empty array to have a correct structure in a response.
+            unset($entities[$gridId]);
+            foreach ($entities as $entityName) {
+                $values = array_filter($row[$entityName]);
+                if (!$values) {
+                    $row[$entityName] = [];
+                }
             }
         }
 
