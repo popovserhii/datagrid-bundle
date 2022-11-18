@@ -109,8 +109,6 @@ class Renderer extends JqGridRenderer
     }
 
     /**
-     * @return array
-     *
      * @throws \Exception
      */
     public function getFilters()
@@ -120,7 +118,6 @@ class Renderer extends JqGridRenderer
             return $this->filters;
         }
 
-
         $optionsRenderer = $this->getOptionsRenderer();
         $parameterNames  = $optionsRenderer['parameterNames'];
 
@@ -128,37 +125,28 @@ class Renderer extends JqGridRenderer
         $postParams = $request->getParsedBody();
         $queryParams = $request->getQueryParams();
 
-        /*$isSearch = $postParams[$parameterNames['isSearch']]
-            ?? $queryParams[$parameterNames['isSearch']]
-            ?? null;*/
-
         $filters = [];
-        #$isSearch = $request->getPost($parameterNames['isSearch'], $request->getQuery($parameterNames['isSearch']));
-        #if ('true' == $isSearch) {
 
-            // User filtering
-            foreach ($this->getColumns() as $column) {
+        // User filtering
+        foreach ($this->getColumns() as $column) {
+            $uniqueId = $column->getUniqueId();
+            #$fieldName = $column->getSelectPart1() . '.' . $column->getSelectPart2();
 
+            $value = $postParams[$uniqueId] ?? $queryParams[$uniqueId] ?? null;
+            #$value = $request->getPost($column->getUniqueId(), $request->getQuery($column->getUniqueId()));
+            /* @var $column \ZfcDatagrid\Column\AbstractColumn */
+            if ($value != '') {
+                // @todo: Convert it ot FilterGroup
+                $filters[] = $this->createFilter($column, $value);
+            } /*elseif ($filterGroup) {
+                $simpleFilter = implode(',', $extendedFilters[$uniqueId]['values']);
+                $filter = $this->createFilter($column, $simpleFilter);
+                $filters[] = $filter;
+            }*/
+        }
 
-                $uniqueId = $column->getUniqueId();
-                #$fieldName = $column->getSelectPart1() . '.' . $column->getSelectPart2();
-
-                $value = $postParams[$uniqueId] ?? $queryParams[$uniqueId] ?? null;
-                #$value = $request->getPost($column->getUniqueId(), $request->getQuery($column->getUniqueId()));
-                /* @var $column \ZfcDatagrid\Column\AbstractColumn */
-                if ($value != '') {
-                    // @todo: Convert it ot FilterGroup
-                    $filters[] = $this->createFilter($column, $value);
-                } /*elseif ($filterGroup) {
-                    $simpleFilter = implode(',', $extendedFilters[$uniqueId]['values']);
-                    $filter = $this->createFilter($column, $simpleFilter);
-                    $filters[] = $filter;
-                }*/
-            }
-        #}
         $values = $postParams['filters'] ?? $queryParams['filters'] ?? null;
-        $filterGroup = $this->prepareFilter(json_decode($values, true));
-
+        $filterGroup = $this->prepareFilters(json_decode($values, true));
 
         if (empty($filters)) {
             // No user sorting -> get default sorting
@@ -186,7 +174,7 @@ class Renderer extends JqGridRenderer
         return (new Column\Select($columnName, $tableAlias))->setSkipped();
     }
 
-    public function prepareFilter($rawFilters)
+    public function prepareFilters($rawFilters)
     {
         if (!$rawFilters) {
             return null;
@@ -211,7 +199,7 @@ class Renderer extends JqGridRenderer
                 }
             } elseif ($value && $key === 'groups') {
                 foreach ($value as $sub) {
-                    $filterGroup->addGroup($this->prepareFilter($sub));
+                    $filterGroup->addGroup($this->prepareFilters($sub));
                 }
             }
         }
