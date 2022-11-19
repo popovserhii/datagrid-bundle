@@ -194,7 +194,9 @@ class Renderer extends JqGridRenderer
                     $column->setFilterDefaultOperation(self::MATCHING_OPERATORS[$rule['op']]);
 
                     $filter = $this->createFilter($column, $rule['data']);
-
+                    if ($this->isFilterIgnored($filter)) {
+                        continue;
+                    }
                     $filterGroup->addFilter($filter);
                 }
             } elseif ($value && $key === 'groups') {
