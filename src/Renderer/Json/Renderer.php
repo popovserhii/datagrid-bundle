@@ -148,9 +148,10 @@ class Renderer extends JqGridRenderer
         $values = $postParams['filters'] ?? $queryParams['filters'] ?? null;
         $filterGroup = $this->prepareFilters(json_decode($values, true));
 
-        if (empty($filters)) {
+        //if (empty($filters)) {
+        if (!$filterGroup) {
             // No user sorting -> get default sorting
-            $filters = $this->getFiltersDefault();
+            $filterGroup = $this->getFiltersDefault();
         }
 
         //$this->filters = $filters;
