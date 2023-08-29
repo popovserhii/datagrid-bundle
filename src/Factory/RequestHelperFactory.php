@@ -17,13 +17,16 @@ namespace Popov\DatagridBundle\Factory;
 use Psr\Container\ContainerInterface;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Symfony\Bridge\PsrHttpMessage\Factory\PsrHttpFactory;
+use Symfony\Component\HttpFoundation\Request;
 use ZfcDatagrid\Middleware\RequestHelper;
 
 class RequestHelperFactory
 {
     public function __invoke(ContainerInterface $container) : RequestHelper
     {
-        $symfonyRequest = $container->get('request_stack')->getCurrentRequest();
+        $symfonyRequest = $container->get('request_stack')->getCurrentRequest()
+            ? $container->get('request_stack')->getCurrentRequest()
+            : new Request();
 
         $psr17Factory = new Psr17Factory();
 
