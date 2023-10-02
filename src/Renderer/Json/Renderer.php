@@ -95,7 +95,6 @@ class Renderer extends JqGridRenderer
         return 'json';
     }*/
 
-
     public function getSortColumns()
     {
         $sortColumns = explode(',', $this->getRequestParam('sortColumns'));
