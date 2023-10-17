@@ -39,7 +39,6 @@ return static function (ContainerConfigurator $configurator) {
     $config = (new ConfigProvider)();
 
     $config['ZfcDatagrid']['settings']['default']['renderer']['http'] = 'jqGrid';
-    $config['ZfcDatagrid']['settings']['default']['renderer']['http'] = 'jqGrid';
 
     $config['ZfcDatagrid']['renderer']['jqGrid']['parameterNames']['currentPage'] = 'page';
     $config['ZfcDatagrid']['renderer']['jqGrid']['parameterNames']['itemsPerPage'] = 'itemsPerPage';
