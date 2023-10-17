@@ -95,6 +95,18 @@ class Renderer extends JqGridRenderer
         return 'json';
     }*/
 
+    public function getGroupColumns()
+    {
+        $orderColumns = explode(',', $this->getRequestParam('groupColumns'));
+        if ($orderColumns) {
+            foreach ($orderColumns as & $orderColumn) {
+                $orderColumn = str_replace('.', '_', $orderColumn);
+            }
+            $orderColumns = implode(',', $orderColumns);
+        }
+        return $orderColumns;
+    }
+
     public function getSortColumns()
     {
         $sortColumns = explode(',', $this->getRequestParam('sortColumns'));

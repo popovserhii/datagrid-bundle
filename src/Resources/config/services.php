@@ -41,6 +41,12 @@ return static function (ContainerConfigurator $configurator) {
     $config['ZfcDatagrid']['settings']['default']['renderer']['http'] = 'jqGrid';
     $config['ZfcDatagrid']['settings']['default']['renderer']['http'] = 'jqGrid';
 
+    $config['ZfcDatagrid']['renderer']['jqGrid']['parameterNames']['currentPage'] = 'page';
+    $config['ZfcDatagrid']['renderer']['jqGrid']['parameterNames']['itemsPerPage'] = 'itemsPerPage';
+    $config['ZfcDatagrid']['renderer']['jqGrid']['parameterNames']['sortColumns'] = 'sortBy';
+    $config['ZfcDatagrid']['renderer']['jqGrid']['parameterNames']['sortDirections'] = 'sortOrder';
+    $config['ZfcDatagrid']['renderer']['jqGrid']['parameterNames']['groupColumns'] = 'groupBy';
+
     $configurator->parameters()
         ->set('config', $config);
 
