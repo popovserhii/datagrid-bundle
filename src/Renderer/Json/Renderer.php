@@ -95,29 +95,29 @@ class Renderer extends JqGridRenderer
         return 'json';
     }*/
 
-    public function getGroupColumns()
-    {
-        $orderColumns = explode(',', $this->getRequestParam('groupColumns'));
-        if ($orderColumns) {
-            foreach ($orderColumns as & $orderColumn) {
-                $orderColumn = str_replace('.', '_', $orderColumn);
-            }
-            $orderColumns = implode(',', $orderColumns);
-        }
-        return $orderColumns;
-    }
+//    public function getGroupColumns()
+//    {
+//        $orderColumns = explode(',', $this->getRequestParam('groupColumns'));
+//        if ($orderColumns) {
+//            foreach ($orderColumns as & $orderColumn) {
+//                $orderColumn = str_replace('.', '_', $orderColumn);
+//            }
+//            $orderColumns = implode(',', $orderColumns);
+//        }
+//        return $orderColumns;
+//    }
 
-    public function getSortColumns()
-    {
-        $sortColumns = explode(',', $this->getRequestParam('sortColumns'));
-        if ($sortColumns) {
-            foreach ($sortColumns as & $sortColumn) {
-                $sortColumn = str_replace('.', '_', $sortColumn);
-            }
-            $sortColumns = implode(',', $sortColumns);
-        }
-        return $sortColumns;
-    }
+//    public function getSortColumns()
+//    {
+//        $sortColumns = explode(',', $this->getRequestParam('sortColumns'));
+//        if ($sortColumns) {
+//            foreach ($sortColumns as & $sortColumn) {
+//                $sortColumn = str_replace('.', '_', $sortColumn);
+//            }
+//            $sortColumns = implode(',', $sortColumns);
+//        }
+//        return $sortColumns;
+//    }
 
     /**
      * @throws \Exception
@@ -171,20 +171,20 @@ class Renderer extends JqGridRenderer
         return $this->filters;
     }
 
-    public function createFilter($column, $value)
-    {
-        /* @var $column \ZfcDatagrid\Column\AbstractColumn */
-        $filter = new \ZfcDatagrid\Filter();
-        $filter->setFromColumn($column, $value);
-        $column->setFilterActive($filter->getDisplayColumnValue());
+//    public function createFilter($column, $value)
+//    {
+//        /* @var $column \ZfcDatagrid\Column\AbstractColumn */
+//        $filter = new \ZfcDatagrid\Filter();
+//        $filter->setFromColumn($column, $value);
+//        $column->setFilterActive($filter->getDisplayColumnValue());
+//
+//        return $filter;
+//    }
 
-        return $filter;
-    }
-
-    public function createColumn($columnName, $tableAlias)
-    {
-        return (new Column\Select($columnName, $tableAlias))->setSkipped();
-    }
+//    public function createColumn($columnName, $tableAlias)
+//    {
+//        return (new Column\Select($columnName, $tableAlias))->setSkipped();
+//    }
 
     public function prepareFilters($rawFilters)
     {
@@ -199,10 +199,11 @@ class Renderer extends JqGridRenderer
                 $filterGroup->setCondition($value);
             } elseif ($value && $key === 'rules') {
                 foreach ($value as $rule) {
-                    $uniqueId = str_replace('.', '_', $rule['field']);
-                    [$tableAlias, $columnName] = explode('.', $rule['field']);
+                    //$uniqueId = str_replace('.', '_', $rule['field']);
+                    //[$tableAlias, $columnName] = explode('.', $rule['field']);
+                    //$column = $this->getColumn($uniqueId) ?: $this->createColumn($columnName, $tableAlias);
 
-                    $column = $this->getColumn($uniqueId) ?: $this->createColumn($columnName, $tableAlias);
+                    $column = $this->getColumnByName($rule['field']);
                     $column->setFilterDefaultOperation(self::MATCHING_OPERATORS[$rule['op']]);
 
                     $filter = $this->createFilter($column, $rule['data']);
