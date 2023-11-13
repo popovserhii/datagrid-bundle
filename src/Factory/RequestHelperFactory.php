@@ -24,9 +24,10 @@ class RequestHelperFactory
 {
     public function __invoke(ContainerInterface $container) : RequestHelper
     {
+        
         $symfonyRequest = $container->get('request_stack')->getCurrentRequest()
             ? $container->get('request_stack')->getCurrentRequest()
-            : new Request();
+            : Request::createFromGlobals();;
 
         $psr17Factory = new Psr17Factory();
 
