@@ -213,9 +213,9 @@ class Renderer extends JqGridRenderer
                     $filterGroup->addFilter($filter);
                 }
             } elseif ($value && $key === 'groups') {
-                foreach ($value as $sub) {
-                    $filterGroup->addGroup($this->prepareFilters($sub));
-                }
+                //foreach ($value as $sub) {
+                    $filterGroup->addGroup($this->prepareFilters($value));
+                //}
             }
         }
 
