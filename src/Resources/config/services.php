@@ -74,6 +74,7 @@ return static function (ContainerConfigurator $configurator) {
     $services->set(TranslatorFactory::class);
 
     $services->set(Datagrid::class)
+        ->share(false)
         ->factory(ref(DatagridFactory::class))
         ->args([ref('service_container')]);
 
@@ -94,6 +95,7 @@ return static function (ContainerConfigurator $configurator) {
         ->args([ref('service_container')]);
 
     $services->set(Renderer::class)
+        ->share(false)
         ->factory(ref(InvokableFactory::class))
         ->args([ref('service_container'), Renderer::class]);
 
