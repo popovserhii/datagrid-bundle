@@ -14,7 +14,7 @@
         "doctrine/orm": "~2.4",
         "symfony/framework-bundle": "~4.0|~5.0|~6.0|~7.0",
         "nyholm/psr7": "~1.8",
-        "symfony/psr-http-message-bridge": "~2.1",
+        "symfony/psr-http-message-bridge": "~4.0|~5.0|~6.0|~7.0",
         "symfony/console": "~4.0|~5.0|~6.0|~7.0",
         "symfony/process": "~4.0|~5.0|~6.0|~7.0",
         "symfony/yaml": "~4.0|~5.0|~6.0|~7.0",
