@@ -19,7 +19,7 @@
         "symfony/process": "~4.0|~5.0|~6.0|~7.0",
         "symfony/yaml": "~4.0|~5.0|~6.0|~7.0",
         "twig/twig": "^1.28.2|^2.0|^3.0",
-        "laminas/laminas-serializer": "2.11.x-dev"
+        "laminas/laminas-serializer": "^3.0"
     },
     "require-dev": {
         "symfony/doctrine-bridge": "~4.0|~5.0",
