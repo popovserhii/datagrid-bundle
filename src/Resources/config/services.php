@@ -19,13 +19,20 @@ use ZfcDatagrid\Datagrid;
 use ZfcDatagrid\ConfigProvider;
 use Laminas\ServiceManager\Factory\InvokableFactory as LaminasInvokableFactory;
 use Popov\DatagridBundle\Factory\RequestHelperFactory;
+use Popov\DatagridBundle\Factory\SessionHelperFactory;
 use Popov\DatagridBundle\Translator\TranslatorFactory;
 use Popov\DatagridBundle\Factory\InvokableFactory;
 use Popov\DatagridBundle\Factory\DatagridFactory;
 use Popov\DatagridBundle\Router\RouterFactory;
 use ZfcDatagrid\Middleware\RequestHelper;
+use ZfcDatagrid\Middleware\SessionHelper;
 use ZfcDatagrid\Router\RouterInterface;
 use ZfcDatagrid\Translator\TranslatorInterface;
+use Laminas\Serializer\Adapter\PhpSerialize;
+use Laminas\Cache\Storage\Adapter\Filesystem;
+use Laminas\Serializer\GenericSerializerFactory;
+use Laminas\ServiceManager\Factory\FactoryInterface;
+use Laminas\Cache\Storage\AdapterPluginManager;
 
 return static function (ContainerConfigurator $configurator) {
 
@@ -55,7 +62,6 @@ return static function (ContainerConfigurator $configurator) {
         }
 
         $services->set($factory);
-
         $services->set($service)
             ->factory(service($factory))
             ->args([service('service_container'), $service]);
@@ -67,12 +73,41 @@ return static function (ContainerConfigurator $configurator) {
 
     unset($config['dependencies']);
 
+    // AdapterPluginManager configuration for cache
+    $services->set(AdapterPluginManager::class)
+        ->args([
+            service('service_container'),
+            [
+                'factories' => [
+                    PhpSerialize::class => service(GenericSerializerFactory::class),
+                ],
+            ],
+        ])
+        ->set(GenericSerializerFactory::class)
+            ->args([PhpSerialize::class])
+        ->set(Serializer::class)
+            ->args([service(AdapterPluginManager::class)])
+        ->set(Filesystem::class)
+            ->args([[
+                'cache_dir' => '%kernel.cache_dir%/zfc_',
+                'namespace' => 'datagrid_',
+                'plugins' => [
+                    'exception_handler' => [
+                        'throw_exceptions' => false,
+                    ],
+                    'Serializer',
+                ],
+            ]])
+            //->call('addPlugin', [service(Serializer::class)])
+            ;
+    
     // DatagridBundle configuration
     $services->set(DatagridFactory::class);
     $services->set(RequestHelperFactory::class);
+    $services->set(SessionHelperFactory::class);
     $services->set(RouterFactory::class);
     $services->set(TranslatorFactory::class);
-
+    
     $services->set(Datagrid::class)
         ->share(false)
         ->factory(service(DatagridFactory::class))
@@ -82,14 +117,14 @@ return static function (ContainerConfigurator $configurator) {
         ->factory(service(RequestHelperFactory::class))
         ->args([service('service_container')]);
 
+    $services->set(SessionHelper::class)
+        ->factory(service(SessionHelperFactory::class))
+        ->args([service('service_container')]);
+
     $services->set(RouterInterface::class)
         ->factory(service(RouterFactory::class))
         ->args([service('service_container')]);
-
-    $services->set(TranslatorInterface::class)
-        ->factory(service(TranslatorFactory::class))
-        ->args([service('service_container')]);
-
+    
     $services->set(TranslatorInterface::class)
         ->factory(service(TranslatorFactory::class))
         ->args([service('service_container')]);
