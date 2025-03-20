@@ -119,7 +119,8 @@ return static function (ContainerConfigurator $configurator) {
 
     $services->set(SessionHelper::class)
         ->factory(service(SessionHelperFactory::class))
-        ->args([service('service_container')]);
+        ->args([service('service_container')])
+        ->lazy();
 
     $services->set(RouterInterface::class)
         ->factory(service(RouterFactory::class))

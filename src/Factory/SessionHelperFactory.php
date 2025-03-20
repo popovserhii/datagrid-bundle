@@ -18,19 +18,22 @@ use Psr\Container\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use ZfcDatagrid\Middleware\SessionHelper;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 class SessionHelperFactory
 {
     public function __invoke(ContainerInterface $container) : SessionHelper
     {
-        $requestStack = $container->has(RequestStack::class)
-            ? $container->get(RequestStack::class)
-            : ($container->has('@request_stack')
-                ? $container->get('@request_stack')
-                : ($container->has('request_stack')
-                    ? $container->get('request_stack')
-                    : null));
-        $session = $requestStack->getSession();
+//        $requestStack = $container->has(RequestStack::class)
+//            ? $container->get(RequestStack::class)
+//            : ($container->has('@request_stack')
+//                ? $container->get('@request_stack')
+//                : ($container->has('request_stack')
+//                    ? $container->get('request_stack')
+//                    : null));
+//        $session = $requestStack->getSession();
+        
+        $session = $container->get(SessionInterface::class);
 
         return new SessionHelper($session);
     }
