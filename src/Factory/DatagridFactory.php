@@ -21,8 +21,6 @@ class DatagridFactory
 {
     public function __invoke(ContainerInterface $container)
     {
-        //$container->set('config', $container->getParameter('config'));
-
         return (new ZfcDatagrid\Service\DatagridFactory)($container, ZfcDatagrid\Datagrid::class);
     }
 }
