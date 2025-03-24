@@ -213,9 +213,11 @@ class Renderer extends JqGridRenderer
                     $filterGroup->addFilter($filter);
                 }
             } elseif ($value && $key === 'groups') {
-                //foreach ($value as $sub) {
-                    $filterGroup->addGroup($this->prepareFilters($value));
-                //}
+                // Here the loop must be.
+                // Check the structure of the "groups" https://gitlab.com/timebase/tb-web/-/blob/master/docs/api-searching-filtering-sorting.md?ref_type=heads#advanced-usage
+                foreach ($value as $sub) {
+                    $filterGroup->addGroup($this->prepareFilters($sub));
+                }
             }
         }
 
