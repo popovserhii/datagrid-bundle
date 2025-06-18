@@ -57,8 +57,8 @@ return static function (ContainerConfigurator $configurator) {
         $services->set($factory);
 
         $services->set($service)
-            ->factory(service($factory))
-            ->args([service('service_container'), $service]);
+            ->factory(ref($factory))
+            ->args([ref('service_container'), $service]);
     }
 
     foreach ($config['dependencies']['aliases'] as $alias => $service) {
@@ -75,29 +75,29 @@ return static function (ContainerConfigurator $configurator) {
 
     $services->set(Datagrid::class)
         ->share(false)
-        ->factory(service(DatagridFactory::class))
-        ->args([service('service_container')]);
+        ->factory(ref(DatagridFactory::class))
+        ->args([ref('service_container')]);
 
     $services->set(RequestHelper::class)
-        ->factory(service(RequestHelperFactory::class))
-        ->args([service('service_container')]);
+        ->factory(ref(RequestHelperFactory::class))
+        ->args([ref('service_container')]);
 
     $services->set(RouterInterface::class)
-        ->factory(service(RouterFactory::class))
-        ->args([service('service_container')]);
+        ->factory(ref(RouterFactory::class))
+        ->args([ref('service_container')]);
 
     $services->set(TranslatorInterface::class)
-        ->factory(service(TranslatorFactory::class))
-        ->args([service('service_container')]);
+        ->factory(ref(TranslatorFactory::class))
+        ->args([ref('service_container')]);
 
     $services->set(TranslatorInterface::class)
-        ->factory(service(TranslatorFactory::class))
-        ->args([service('service_container')]);
+        ->factory(ref(TranslatorFactory::class))
+        ->args([ref('service_container')]);
 
     $services->set(Renderer::class)
         ->share(false)
-        ->factory(service(InvokableFactory::class))
-        ->args([service('service_container'), Renderer::class]);
+        ->factory(ref(InvokableFactory::class))
+        ->args([ref('service_container'), Renderer::class]);
 
     $services->alias('zfcDatagrid.renderer.jqGrid', Renderer::class);
 };
