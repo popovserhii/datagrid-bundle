@@ -17,10 +17,10 @@ namespace Popov\DatagridBundle\Renderer\Json;
 
 use ZfcDatagrid\Filter;
 use ZfcDatagrid\FilterGroup;
-use ZfcDatagrid\Renderer\JqGrid\Renderer as JqGridRenderer;
+use ZfcDatagrid\Renderer\JqGrid;
 use ZfcDatagrid\Column;
 
-class Renderer extends JqGridRenderer
+class Renderer extends JqGrid\Renderer
 {
     /**
      * Available filters.
@@ -143,11 +143,11 @@ class Renderer extends JqGridRenderer
             $uniqueId = $column->getUniqueId();
             #$fieldName = $column->getSelectPart1() . '.' . $column->getSelectPart2();
 
-            $value = $postParams[$uniqueId] ?? $queryParams[$uniqueId] ?? null;
+            $value = $postParams[$uniqueId] ?? $queryParams[$uniqueId] ?? $request->getHeaderLine($uniqueId) ?? '';
             #$value = $request->getPost($column->getUniqueId(), $request->getQuery($column->getUniqueId()));
             /* @var $column \ZfcDatagrid\Column\AbstractColumn */
             if ($value != '') {
-                // @todo: Convert it ot FilterGroup
+                // @todo: Convert it to FilterGroup
                 $filters[] = $this->createFilter($column, $value);
             } /*elseif ($filterGroup) {
                 $simpleFilter = implode(',', $extendedFilters[$uniqueId]['values']);
@@ -156,7 +156,7 @@ class Renderer extends JqGridRenderer
             }*/
         }
 
-        $values = $postParams['filters'] ?? $queryParams['filters'] ?? null;
+        $values = $postParams['filters'] ?? $queryParams['filters'] ?? $request->getHeaderLine('filters') ?? '';
         $filterGroup = $this->prepareFilters(json_decode($values, true));
 
         //if (empty($filters)) {
