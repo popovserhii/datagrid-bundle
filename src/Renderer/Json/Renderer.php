@@ -136,25 +136,32 @@ class Renderer extends JqGrid\Renderer
         $postParams = $request->getParsedBody();
         $queryParams = $request->getQueryParams();
 
+        // $isSearch is responsible for Boolean search and is not compatabile with QueryBuilder
+        $isSearch = $postParams[$parameterNames['isSearch']]
+            ?? $queryParams[$parameterNames['isSearch']]
+            ?? null;
+
         $filters = [];
+        if ('true' == $isSearch) {
+            // User filtering
+            foreach ($this->getColumns() as $column) {
+                $uniqueId = $column->getUniqueId();
+                #$fieldName = $column->getSelectPart1() . '.' . $column->getSelectPart2();
 
-        // User filtering
-        foreach ($this->getColumns() as $column) {
-            $uniqueId = $column->getUniqueId();
-            #$fieldName = $column->getSelectPart1() . '.' . $column->getSelectPart2();
-
-            $value = $postParams[$uniqueId] ?? $queryParams[$uniqueId] ?? $request->getHeaderLine($uniqueId) ?? '';
-            #$value = $request->getPost($column->getUniqueId(), $request->getQuery($column->getUniqueId()));
-            /* @var $column \ZfcDatagrid\Column\AbstractColumn */
-            if ($value != '') {
-                // @todo: Convert it to FilterGroup
-                $filters[] = $this->createFilter($column, $value);
-            } /*elseif ($filterGroup) {
-                $simpleFilter = implode(',', $extendedFilters[$uniqueId]['values']);
-                $filter = $this->createFilter($column, $simpleFilter);
-                $filters[] = $filter;
-            }*/
+                #$value = $request->getPost($column->getUniqueId(), $request->getQuery($column->getUniqueId()));
+                $value = $postParams[$uniqueId] ?? $queryParams[$uniqueId] ?? $request->getHeaderLine($uniqueId) ?? '';
+                /* @var $column \ZfcDatagrid\Column\AbstractColumn */
+                if ($value != '') {
+                    // @todo: Convert it to FilterGroup
+                    $filters[] = $this->createFilter($column, $value);
+                } /*elseif ($filterGroup) {
+                    $simpleFilter = implode(',', $extendedFilters[$uniqueId]['values']);
+                    $filter = $this->createFilter($column, $simpleFilter);
+                    $filters[] = $filter;
+                }*/
+            }
         }
+
 
         $values = $postParams['filters'] ?? $queryParams['filters'] ?? $request->getHeaderLine('filters') ?? '';
         $filterGroup = $this->prepareFilters(json_decode($values, true));
