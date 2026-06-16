@@ -33,6 +33,7 @@ use Laminas\Cache\Storage\Adapter\Filesystem;
 use Laminas\Serializer\GenericSerializerFactory;
 use Laminas\ServiceManager\Factory\FactoryInterface;
 use Laminas\Cache\Storage\AdapterPluginManager;
+use Symfony\Component\DependencyInjection\Reference;
 
 return static function (ContainerConfigurator $configurator) {
 
@@ -63,8 +64,8 @@ return static function (ContainerConfigurator $configurator) {
 
         $services->set($factory);
         $services->set($service)
-            ->factory(service($factory))
-            ->args([service('service_container'), $service]);
+            ->factory(new Reference($factory))
+            ->args([new Reference('service_container'), $service]);
     }
 
     foreach ($config['dependencies']['aliases'] as $alias => $service) {
@@ -76,17 +77,17 @@ return static function (ContainerConfigurator $configurator) {
     // AdapterPluginManager configuration for cache
     $services->set(AdapterPluginManager::class)
         ->args([
-            service('service_container'),
+            new Reference('service_container'),
             [
                 'factories' => [
-                    PhpSerialize::class => service(GenericSerializerFactory::class),
+                    PhpSerialize::class => new Reference(GenericSerializerFactory::class),
                 ],
             ],
         ])
         ->set(GenericSerializerFactory::class)
             ->args([PhpSerialize::class])
         ->set(Serializer::class)
-            ->args([service(AdapterPluginManager::class)])
+            ->args([new Reference(AdapterPluginManager::class)])
         ->set(Filesystem::class)
             ->args([[
                 'cache_dir' => '%kernel.cache_dir%/zfc_',
@@ -110,29 +111,29 @@ return static function (ContainerConfigurator $configurator) {
     
     $services->set(Datagrid::class)
         ->share(false)
-        ->factory(service(DatagridFactory::class))
-        ->args([service('service_container')]);
+        ->factory(new Reference(DatagridFactory::class))
+        ->args([new Reference('service_container')]);
 
     $services->set(RequestHelper::class)
-        ->factory(service(RequestHelperFactory::class))
-        ->args([service('service_container')]);
+        ->factory(new Reference(RequestHelperFactory::class))
+        ->args([new Reference('service_container')]);
 
     $services->set(SessionHelper::class)
-        ->factory(service(SessionHelperFactory::class))
-        ->args([service('service_container')]);
+        ->factory(new Reference(SessionHelperFactory::class))
+        ->args([new Reference('service_container')]);
 
     $services->set(RouterInterface::class)
-        ->factory(service(RouterFactory::class))
-        ->args([service('service_container')]);
+        ->factory(new Reference(RouterFactory::class))
+        ->args([new Reference('service_container')]);
     
     $services->set(TranslatorInterface::class)
-        ->factory(service(TranslatorFactory::class))
-        ->args([service('service_container')]);
+        ->factory(new Reference(TranslatorFactory::class))
+        ->args([new Reference('service_container')]);
 
     $services->set(Renderer::class)
         ->share(false)
-        ->factory(service(InvokableFactory::class))
-        ->args([service('service_container'), Renderer::class]);
+        ->factory(new Reference(InvokableFactory::class))
+        ->args([new Reference('service_container'), Renderer::class]);
 
     $services->alias('zfcDatagrid.renderer.jqGrid', Renderer::class);
 };
