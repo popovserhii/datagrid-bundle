@@ -1,3 +1,11 @@
+*.swp
+*.swo
+.idea
+.DS_Store
+*.iml
+.history
+.vscode
+
 # Cache and logs (Symfony2)
 /app/cache/*
 /app/logs/*
