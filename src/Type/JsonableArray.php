@@ -35,11 +35,23 @@ class JsonableArray extends AbstractType
      */
     public function getUserValue($value)
     {
-        if (!is_array($value)) {
+        if (is_string($value)) {
             if ('' == $value) {
                 $value = [];
             } else {
-                $value = json_decode($value, true);
+                $decoded = json_decode($value, true);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    // JSON isn't valid — return as is
+                    return $value;
+                }
+                // JSON is valid
+                return $this->getUserValue($decoded);
+            }
+        }
+
+        if (is_array($value)) {
+            foreach ($value as $key => $sub) {
+                $value[$key] = $this->getUserValue($sub);
             }
         }
 

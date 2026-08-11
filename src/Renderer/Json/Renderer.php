@@ -162,6 +162,7 @@ class Renderer extends JqGrid\Renderer
             }
         }
 
+        $values = $postParams['filters'] ?? $queryParams['filters'] ?? $request->getHeaderLine('filters') ?? null;
 
         $values = $postParams['filters'] ?? $queryParams['filters'] ?? $request->getHeaderLine('filters') ?? '';
         $filterGroup = $this->prepareFilters(json_decode($values, true));
