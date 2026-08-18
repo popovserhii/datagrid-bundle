@@ -20,7 +20,7 @@ use ZfcDatagrid\ConfigProvider;
 use Laminas\ServiceManager\Factory\InvokableFactory as LaminasInvokableFactory;
 use Popov\DatagridBundle\Factory\RequestHelperFactory;
 use Popov\DatagridBundle\Factory\SessionHelperFactory;
-use Popov\DatagridBundle\Translator\TranslatorFactory;
+ use Popov\DatagridBundle\Translator\TranslatorFactory;
 use Popov\DatagridBundle\Factory\InvokableFactory;
 use Popov\DatagridBundle\Factory\DatagridFactory;
 use Popov\DatagridBundle\Router\RouterFactory;
@@ -63,8 +63,8 @@ return static function (ContainerConfigurator $configurator) {
 
         $services->set($factory);
         $services->set($service)
-            ->factory(service($factory))
-            ->args([service('service_container'), $service]);
+            ->factory(ref($factory))
+            ->args([ref('service_container'), $service]);
     }
 
     foreach ($config['dependencies']['aliases'] as $alias => $service) {
@@ -100,22 +100,22 @@ return static function (ContainerConfigurator $configurator) {
             ]])
             //->call('addPlugin', [service(Serializer::class)])
             ;
-    
+
     // DatagridBundle configuration
     $services->set(DatagridFactory::class);
     $services->set(RequestHelperFactory::class);
     $services->set(SessionHelperFactory::class);
     $services->set(RouterFactory::class);
     $services->set(TranslatorFactory::class);
-    
+
     $services->set(Datagrid::class)
         ->share(false)
-        ->factory(service(DatagridFactory::class))
-        ->args([service('service_container')]);
+        ->factory(ref(DatagridFactory::class))
+        ->args([ref('service_container')]);
 
     $services->set(RequestHelper::class)
-        ->factory(service(RequestHelperFactory::class))
-        ->args([service('service_container')]);
+        ->factory(ref(RequestHelperFactory::class))
+        ->args([ref('service_container')]);
 
     $services->set(SessionHelper::class)
         ->factory(service(SessionHelperFactory::class))
@@ -123,17 +123,19 @@ return static function (ContainerConfigurator $configurator) {
         ->lazy();
 
     $services->set(RouterInterface::class)
-        ->factory(service(RouterFactory::class))
-        ->args([service('service_container')]);
-    
-    $services->set(TranslatorInterface::class)
-        ->factory(service(TranslatorFactory::class))
-        ->args([service('service_container')]);
+        ->factory(ref(RouterFactory::class))
+        ->args([ref('service_container')]);
 
-    $services->set(Renderer::class)
+    $services->set(TranslatorInterface::class)
+        ->factory(ref(TranslatorFactory::class))
+        ->args([ref('service_container')]);
+
+     $services->set(Renderer::class)
+        ->factory(ref(TranslatorFactory::class))
+        ->args([ref('service_container')]);
         ->share(false)
-        ->factory(service(InvokableFactory::class))
-        ->args([service('service_container'), Renderer::class]);
+        ->factory(ref(InvokableFactory::class))
+        ->args([ref('service_container'), Renderer::class]);
 
     $services->alias('zfcDatagrid.renderer.jqGrid', Renderer::class);
 };
