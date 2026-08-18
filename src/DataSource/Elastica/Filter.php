@@ -3,6 +3,7 @@ namespace Popov\DatagridBundle\DataSource\Elastica;
 
 use Doctrine\ORM\Query\Expr;
 use Elastica\QueryBuilder;
+use JoliCode\Elastically;
 use ZfcDatagrid\Column;
 use ZfcDatagrid\Filter as DatagridFilter;
 use ZfcDatagrid\FilterGroup;
@@ -14,14 +15,20 @@ class Filter
     /**
      * @var QueryBuilder
      */
-    private $qb;
+    protected $qb;
+
+    /**
+     * @var
+     */
+    protected $index;
 
     /**
      * @param QueryBuilder $qb
      */
-    public function __construct(QueryBuilder $qb)
+    public function __construct(QueryBuilder $qb, Elastically\Index $index)
     {
         $this->qb = $qb;
+        $this->index = $index;
         //$this->expr = $qb->query()->constant_score();
     }
 
@@ -69,6 +76,8 @@ class Filter
 
         $expr = $qb->query()->bool();
 
+        $this->mapping = $this->index->getMapping();
+
         $clauses = [];
         foreach ($filters as $i => $filter) {
             $column = $filter->getColumn();
@@ -88,9 +97,11 @@ class Filter
                 #$valueParameterName = ':' . str_replace('.', '', $column->getUniqueId() . $i . $key);
                 switch ($filter->getOperator()) {
                     case DatagridFilter::LIKE:
-                        //$clauses[] = $expr->like($colString, $valueParameterName);
+                        //$clauses[] = $expr ->like($colString, $valueParameterName);
                         //$qb->setParameter($valueParameterName, '%' . $value . '%');
                         $clause = $qb->query()->match_phrase($colString, $value);
+
+                        //$expr->addMust($qb->query()->nested()->setPath('projectManager')->setQuery($qb->query()->match_phrase('projectManager.full_name', 'Sona')));
 
                         break;
                     case DatagridFilter::LIKE_LEFT:
@@ -192,8 +203,8 @@ class Filter
                         );
                 }
 
-                if ($column->getSelectPart1()) {
-
+                if ($this->isNested($column)) {
+                    $clause = $qb->query()->nested()->setPath($column->getSelectPart1())->setQuery($clause);
                 }
 
                 $clauses[] = $clause;
@@ -217,4 +228,22 @@ class Filter
         return $expr;
         #return $clauses;
     }
+
+    protected function isNested($column)
+    {
+        if (isset($this->mapping['properties'][$column->getSelectPart1()])) {
+
+        }
+
+        return (isset($this->mapping['properties'][$column->getSelectPart1()]['type'])
+            && 'nested' === $this->mapping['properties'][$column->getSelectPart1()]['type'])
+        || (isset($this->mapping['properties'][$column->getSelectPart1()]['type'])
+            && 'nested' === $this->mapping['properties'][$column->getSelectPart1()]['type']);
+    }
+
+    protected function getNestedName($column)
+    {
+
+    }
+
 }
