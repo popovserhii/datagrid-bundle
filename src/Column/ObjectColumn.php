@@ -21,6 +21,7 @@ use Laminas\Db\Sql\Expression;
 use Popov\DatagridBundle\Type\JsonableArray;
 use ZfcDatagrid\Column\Select;
 use ZfcDatagrid\Datagrid;
+use ZfcDatagrid\Column\AbstractColumn;
 use MediaparkLt\CustomerBundle\Entity\Customer;
 use MediaparkLt\ProjectBundle\Entity\Status;
 
@@ -67,7 +68,7 @@ class ObjectColumn extends Column\Select
     }
 
     /**
-     * @return \ZfcDatagrid\Column\AbstractColumn[]
+     * @return AbstractColumn[]
      */
     public function sortColumns(): array
     {
@@ -82,7 +83,7 @@ class ObjectColumn extends Column\Select
     }
 
     /**
-     * @return \ZfcDatagrid\Column\AbstractColumn[]
+     * @return AbstractColumn[]
      */
     public function getColumns()
     {
@@ -93,8 +94,35 @@ class ObjectColumn extends Column\Select
     {
         $this->setType(new JsonableArray());
 
-        $gridId = '';
-        $index = 0;
+        $sql = $this->buildSqlJson();
+
+        //return new Expr\Select($sql); // @todo-serhii Implement support for both, Doctrine and LaminasTable
+        return new Expression($sql);
+    }
+
+    public function getSelectPart2()
+    {
+        return '';
+    }
+
+    public function buildSqlJson()
+    {
+        $this->setType(new JsonableArray());
+
+        $selectColumns = $this->getSelectColumns();
+        [$gridId, $primaryName] = $this->getPrimaries();
+
+        $sql = "
+            CASE WHEN {$gridId}.{$primaryName} IS NOT NULL THEN 
+                JSON_OBJECT(" . implode(', ', $selectColumns) . ") 
+            ELSE NULLIF(1,1) END
+        ";
+
+        return $sql;
+    }
+
+    protected function getSelectColumns()
+    {
         $selectColumns = [];
         foreach ($this->getColumns() as $column) {
             $colString = $column->getSelectPart1();
@@ -102,30 +130,47 @@ class ObjectColumn extends Column\Select
                 $colString .= '.' . $column->getSelectPart2();
             }
 
-            $entityName = strtok($column->getUniqueId(), '_');
-            $fieldName = substr($column->getUniqueId(), strlen($entityName) + 1);
+            [$entityName, $fieldName] = $this->getUniqueParts($column);
 
-            // Determine base grid ID to build appropriate JSON hierarchy
-            if (0 === $index && !$gridId) {
-                $gridId = $entityName;
-                $primaryName = $fieldName;
+            if ($colString instanceof Expression) {
+                $colString = $colString->getExpression();
             }
-
             $selectColumns[] = "'{$fieldName}'" . ', ' . $colString;
-            $index++;
         }
 
-        if (!$gridId) {
+        return $selectColumns;
+    }
+
+    /**
+     * Determine base grid ID to build appropriate JSON hierarchy
+     *
+     * First part equals to the Grid ID
+     * Second part equals to the Primary name (aka, field ID)
+     *
+     * @return array
+     */
+    protected function getPrimaries()
+    {
+        $gridId = '';
+        foreach ($this->getColumns() as $column) {
+            [$gridId, $primaryName] = $this->getUniqueParts($column);
+
+            break;
+        }
+
+        if (empty($primaryName)) {
             throw new \RuntimeException('Grid ID is not defined. Your grid must have at least one column with entity name as prefix (e.g. customer_id, project_id, etc.).');
         }
 
-        $sql = "CASE WHEN {$gridId}.{$primaryName} IS NOT NULL THEN JSON_OBJECT(" . implode(', ', $selectColumns) . ") ELSE NULLIF(1,1) END";
-
-        return new Expr\Select($sql);
+        return [$gridId, $primaryName];
     }
 
-    public function getSelectPart2()
+    protected function getUniqueParts(AbstractColumn $column)
     {
-        return '';
+        $uniqueId = rtrim($column->getUniqueId(), '_');
+        $entityName = strtok($uniqueId, '_');
+        $fieldName = substr($uniqueId, strlen($entityName) + 1);
+
+        return [$entityName, $fieldName];
     }
 }

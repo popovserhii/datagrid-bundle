@@ -35,48 +35,17 @@ class NestedColumn extends ObjectColumn
     {
         $this->setType(new JsonableArray());
 
-        $gridId = '';
-        $index = 0;
-        $selectColumns = [];
-        foreach ($this->getColumns() as $column) {
-            $colString = $column->getSelectPart1();
-            if ($column->getSelectPart2() != '') {
-                $colString .= '.' . $column->getSelectPart2();
-            }
-
-            $entityName = strtok($column->getUniqueId(), '_');
-            $fieldName = substr($column->getUniqueId(), strlen($entityName) + 1);
-
-            // Determine base grid ID to build appropriate JSON hierarchy
-            if (0 === $index && !$gridId) {
-                $gridId = $entityName;
-                $primaryName = $fieldName;
-            }
-
-            $selectColumns[] = "'{$fieldName}'" . ', ' . $colString;
-            $index++;
-        }
-
-        if (!$gridId) {
-            throw new RuntimeException('Grid ID is not defined. The grid must have at least one column with entity name as prefix (e.g. customer_id, project_id, etc.).');
-        }
-
-        $sql = "CONCAT('[', GROUP_CONCAT(DISTINCT CASE WHEN {$gridId}.{$primaryName} IS NOT NULL THEN JSON_OBJECT(" . implode(', ', $selectColumns) . ") ELSE NULLIF(1,1) END), ']')";
+        $sql = $this->buildSqlJson();
+        $sql = "CONCAT('[', GROUP_CONCAT(DISTINCT " . $sql . "), ']')";
 
         $sql = $this->getSqlWrapped($sql);
-        
-        #return new Expr\Select($sql);
-        return new Expression($sql);
-    }
 
-    public function getSelectPart2()
-    {
-        return '';
+        //return new Expr\Select($sql); // @todo-serhii Implement support for both, Doctrine and LaminasTable
+        return new Expression($sql);
     }
 
     public function setSqlTemplate($sqlTemplate)
     {
-
         $this->sqlTemplate = $sqlTemplate;
 
         return $this;
@@ -85,7 +54,7 @@ class NestedColumn extends ObjectColumn
     protected function getSqlWrapped($sql)
     {
         if (!$this->sqlTemplate) {
-            // There is nothing to replace. The nested SQL is prepered on the Table level.
+            // There is nothing to replace. The nested SQL is prepared on the Table level.
             return $sql;
         }
 
