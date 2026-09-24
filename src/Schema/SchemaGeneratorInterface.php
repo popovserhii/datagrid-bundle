@@ -13,7 +13,7 @@
  * @license https://opensource.org/licenses/MIT The MIT License (MIT)
  */
 
-namespace Popov\DatagridBundl\Schema;
+namespace Popov\DatagridBundle\Schema;
 
 interface SchemaGeneratorInterface
 {
