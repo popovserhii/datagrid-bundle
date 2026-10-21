@@ -4,7 +4,7 @@ namespace Popov\DatagridBundle\Tests\Unit\Column;
 
 use Doctrine\SqlFormatter\NullHighlighter;
 use Doctrine\SqlFormatter\SqlFormatter;
-use Popov\DatagridBundle\Column\NestedColumn;
+use Popov\DatagridBundle\Column\CollectionColumn;
 use RuntimeException;
 use Laminas\Db\Sql\Expression;
 use Mockery;
@@ -18,7 +18,7 @@ final class NestedColumnTest extends MockeryTestCase
 {
     public function testSelectIsBuiltFromConfiguredColumns()
     {
-        $subject = new NestedColumn('client', 'customer');
+        $subject = new CollectionColumn('client', 'customer');
 
         $subject->addColumn(new Select('id', 'client'));
         $subject->addColumn(new Select('title', 'client'));

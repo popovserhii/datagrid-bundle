@@ -14,7 +14,12 @@
 
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
+use Popov\DatagridBundle\Bridge\Symfony\Cache\GridCacheWarmer;
+use Popov\DatagridBundle\Discovery\GridDiscovery;
+use Popov\DatagridBundle\Discovery\GridRegistry;
+use Popov\DatagridBundle\Discovery\Runtime;
 use Popov\DatagridBundle\Renderer\Json\Renderer;
+use Popov\DatagridBundle\Schema\GridSchema;
 use ZfcDatagrid\Datagrid;
 use ZfcDatagrid\ConfigProvider;
 use Laminas\ServiceManager\Factory\InvokableFactory as LaminasInvokableFactory;
@@ -41,7 +46,17 @@ return static function (ContainerConfigurator $configurator) {
         ->defaults()
             ->public()
             ->autowire()
-            ->autoconfigure();
+            ->autoconfigure()
+    ;
+
+    $services->load('Popov\\DatagridBundle\\', $sourceDir = dirname(__DIR__, 2))
+        ->exclude([
+            $sourceDir . '/DependencyInjection/',
+            $sourceDir . '/Resources/',
+            $sourceDir . '/Column/',
+            $sourceDir . '/PopovDatagridBundle.php',
+        ])
+    ;
 
     // Convert Laminas configuration to Symfony
     $config = (new ConfigProvider)();
@@ -108,6 +123,11 @@ return static function (ContainerConfigurator $configurator) {
     $services->set(SessionHelperFactory::class);
     $services->set(RouterFactory::class);
     $services->set(TranslatorFactory::class);
+    $services->set(GridDiscovery::class);
+    $services->set(Runtime::class);
+    $services->set(GridRegistry::class);
+    $services->set(GridSchema::class);
+    $services->set(GridCacheWarmer::class);
     
     $services->set(Datagrid::class)
         ->share(false)

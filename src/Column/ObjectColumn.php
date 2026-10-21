@@ -18,7 +18,8 @@ namespace Popov\DatagridBundle\Column;
 use ZfcDatagrid\Column;
 use Doctrine\ORM\Query\Expr;
 use Laminas\Db\Sql\Expression;
-use Popov\DatagridBundle\Type\JsonableArray;
+use ZfcDatagrid\Column\Type;
+use Popov\DatagridBundle\Type\JsonObject;
 use ZfcDatagrid\Column\Select;
 use ZfcDatagrid\Datagrid;
 use ZfcDatagrid\Column\AbstractColumn;
@@ -43,7 +44,19 @@ class ObjectColumn extends Column\Select
      * @var array
      */
     protected $columns = [];
-    
+
+    /**
+     * @return Type\AbstractType
+     */
+    public function getType(): Type\AbstractType
+    {
+        if (null === $this->type) {
+            $this->type = new JsonObject();
+        }
+
+        return $this->type;
+    }
+
     /**
      * Add a column by array config or instanceof Column\AbstractColumn.
      *
@@ -92,8 +105,6 @@ class ObjectColumn extends Column\Select
 
     public function getSelectPart1()
     {
-        $this->setType(new JsonableArray());
-
         $sql = $this->buildSqlJson();
 
         //return new Expr\Select($sql); // @todo-serhii Implement support for both, Doctrine and LaminasTable
@@ -107,8 +118,6 @@ class ObjectColumn extends Column\Select
 
     public function buildSqlJson()
     {
-        $this->setType(new JsonableArray());
-
         $selectColumns = $this->getSelectColumns();
         [$gridId, $primaryName] = $this->getPrimaries();
 

@@ -15,6 +15,7 @@
 
 namespace Popov\DatagridBundle\Renderer\Json;
 
+use stdClass;
 use ZfcDatagrid\Filter;
 use ZfcDatagrid\FilterGroup;
 use ZfcDatagrid\Renderer\JqGrid;
@@ -136,27 +137,33 @@ class Renderer extends JqGrid\Renderer
         $postParams = $request->getParsedBody();
         $queryParams = $request->getQueryParams();
 
+        // $isSearch is responsible for Boolean search and is not compatabile with QueryBuilder
+        $isSearch = $postParams[$parameterNames['isSearch']]
+            ?? $queryParams[$parameterNames['isSearch']]
+            ?? null;
+
         $filters = [];
+        if ('true' == $isSearch) {
+            // User filtering
+            foreach ($this->getColumns() as $column) {
+                $uniqueId = $column->getUniqueId();
+                #$fieldName = $column->getSelectPart1() . '.' . $column->getSelectPart2();
 
-        // User filtering
-        foreach ($this->getColumns() as $column) {
-            $uniqueId = $column->getUniqueId();
-            #$fieldName = $column->getSelectPart1() . '.' . $column->getSelectPart2();
-
-            $value = $postParams[$uniqueId] ?? $queryParams[$uniqueId] ?? $request->getHeaderLine($uniqueId) ?? null;
-            #$value = $request->getPost($column->getUniqueId(), $request->getQuery($column->getUniqueId()));
-            /* @var $column \ZfcDatagrid\Column\AbstractColumn */
-            if ($value != '') {
-                // @todo: Convert it to FilterGroup
-                $filters[] = $this->createFilter($column, $value);
-            } /*elseif ($filterGroup) {
-                $simpleFilter = implode(',', $extendedFilters[$uniqueId]['values']);
-                $filter = $this->createFilter($column, $simpleFilter);
-                $filters[] = $filter;
-            }*/
+                #$value = $request->getPost($column->getUniqueId(), $request->getQuery($column->getUniqueId()));
+                $value = $postParams[$uniqueId] ?? $queryParams[$uniqueId] ?? $request->getHeaderLine($uniqueId) ?? '';
+                /* @var $column \ZfcDatagrid\Column\AbstractColumn */
+                if ($value != '') {
+                    // @todo: Convert it to FilterGroup
+                    $filters[] = $this->createFilter($column, $value);
+                } /*elseif ($filterGroup) {
+                    $simpleFilter = implode(',', $extendedFilters[$uniqueId]['values']);
+                    $filter = $this->createFilter($column, $simpleFilter);
+                    $filters[] = $filter;
+                }*/
+            }
         }
 
-        $values = $postParams['filters'] ?? $queryParams['filters'] ?? $request->getHeaderLine('filters') ?? null;
+        $values = $postParams['filters'] ?? $queryParams['filters'] ?? $request->getHeaderLine('filters') ?? '';
         $filterGroup = $this->prepareFilters(json_decode($values, true));
 
         //if (empty($filters)) {
@@ -240,8 +247,9 @@ class Renderer extends JqGrid\Renderer
                     continue;
                 }
                 if ($column instanceof Column\Select) {
-                    $entityName = strtok($column->getUniqueId(), '_');
-                    $fieldName = substr($column->getUniqueId(), strlen($entityName) + 1);
+                    //$entityName = strtok($column->getUniqueId(), '_');
+                    //$fieldName = substr($column->getUniqueId(), strlen($entityName) + 1);
+                    [$entityName, $fieldName] = array_pad(explode('_', $column->getUniqueId(), 2), 2, null);
 
                     $entities[$entityName] = $entityName; // Life hack to optimize the memory
 
@@ -267,9 +275,11 @@ class Renderer extends JqGrid\Renderer
             // Convert an entity with all empty fields to empty array to have a correct structure in a response.
             unset($entities[$gridId]);
             foreach ($entities as $entityName) {
-                $values = array_filter($row[$entityName]);
+                // Passing null as the callback tells PHP to clear out all "falsy" values from the array
+                // (including null, false, 0, and empty strings).
+                $values = array_filter($row[$entityName] ?? []);
                 if (!$values) {
-                    $row[$entityName] = [];
+                    $row[$entityName] = null;
                 }
             }
         }

@@ -19,22 +19,28 @@ use RuntimeException;
 use ZfcDatagrid\Column;
 use Doctrine\ORM\Query\Expr;
 use Laminas\Db\Sql\Expression;
-use Popov\DatagridBundle\Type\JsonableArray;
-use ZfcDatagrid\Column\Select;
-use ZfcDatagrid\Datagrid;
-use MediaparkLt\CustomerBundle\Entity\Customer;
-use MediaparkLt\ProjectBundle\Entity\Status;
+use ZfcDatagrid\Column\Type;
+use Popov\DatagridBundle\Type\JsonCollection;
 
-class NestedColumn extends ObjectColumn
+class CollectionColumn extends ObjectColumn
 {
     const COLUMNS_PLACEHOLDER = ':columnConcated:';
 
     protected $sqlTemplate = '';
 
+    /**
+     */
+    public function getType(): Type\AbstractType
+    {
+        if (null === $this->type) {
+            $this->type = new JsonCollection();
+        }
+
+        return $this->type;
+    }
+
     public function getSelectPart1()
     {
-        $this->setType(new JsonableArray());
-
         $sql = $this->buildSqlJson();
         $sql = "CONCAT('[', GROUP_CONCAT(DISTINCT " . $sql . "), ']')";
 

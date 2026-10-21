@@ -159,6 +159,7 @@ final class GridDiscovery
 
     protected function isGridClass($class)
     {
+        // @todo Migrate to the library based interface
         if (!is_subclass_of($class, GridInterface::class, true)) {
             return false;
         }
