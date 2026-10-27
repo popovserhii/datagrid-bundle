@@ -25,6 +25,9 @@
         "symfony/doctrine-bridge": "~4.0|~5.0|~6.0|~7.0",
         "symfony/phpunit-bridge": "^3.3"
     },
+    "suggest": {
+        "symfony/http-client": "HTTP transport for the Remote data source"
+    },
     "autoload": {
         "psr-4": {
           "Popov\\DatagridBundle\\": "src/"

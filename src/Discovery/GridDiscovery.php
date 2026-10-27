@@ -10,6 +10,8 @@ use RecursiveDirectoryIterator;
 use FilesystemIterator;
 use Popov\DatagridBundle\GridInterface;
 use Composer\Autoload\ClassLoader;
+use Symfony\Component\Debug\DebugClassLoader as LegacyDebugClassLoader;
+use Symfony\Component\ErrorHandler\DebugClassLoader;
 
 final class GridDiscovery
 {
@@ -22,6 +24,7 @@ final class GridDiscovery
 
         foreach ($this->getComposerLoaders() as $loader) {
             $grids = array_merge(
+                $grids,
                 $this->discoverClassMap($loader),
                 $this->discoverPsr4($loader)
             );
@@ -40,6 +43,15 @@ final class GridDiscovery
 
         $autoloads = spl_autoload_functions() ?: [];
         foreach ($autoloads as $autoload) {
+            // Symfony wraps Composer callbacks when debug mode is enabled.
+            while (is_array($autoload)
+                && isset($autoload[0])
+                && ($autoload[0] instanceof LegacyDebugClassLoader
+                    || $autoload[0] instanceof DebugClassLoader)
+            ) {
+                $autoload = $autoload[0]->getClassLoader();
+            }
+
             if (is_array($autoload)
                 && isset($autoload[0])
                 && $autoload[0] instanceof ClassLoader

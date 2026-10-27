@@ -54,6 +54,7 @@ return static function (ContainerConfigurator $configurator) {
             $sourceDir . '/DependencyInjection/',
             $sourceDir . '/Resources/',
             $sourceDir . '/Column/',
+            $sourceDir . '/DataSource/',
             $sourceDir . '/PopovDatagridBundle.php',
         ])
     ;

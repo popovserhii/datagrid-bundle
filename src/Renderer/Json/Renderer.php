@@ -23,6 +23,20 @@ use ZfcDatagrid\Column;
 
 class Renderer extends JqGrid\Renderer
 {
+    private $dataFormatted = false;
+
+    public function setDataFormatted(bool $formatted): self
+    {
+        $this->dataFormatted = $formatted;
+
+        return $this;
+    }
+
+    public function isDataFormatted(): bool
+    {
+        return $this->dataFormatted;
+    }
+
     /**
      * Available filters.
      *
@@ -236,6 +250,10 @@ class Renderer extends JqGrid\Renderer
 
     public function getData(): array
     {
+        if ($this->dataFormatted) {
+            return $this->data;
+        }
+
         $gridId = '';
         $data = $this->data;
         foreach ($data as $key => & $row) {
