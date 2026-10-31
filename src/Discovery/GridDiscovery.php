@@ -144,6 +144,10 @@ final class GridDiscovery
      */
     protected function findGridFiles($directory)
     {
+        if (!is_dir($directory)) {
+            return;
+        }
+
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator(
                 $directory,

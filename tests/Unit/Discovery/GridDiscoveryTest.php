@@ -59,6 +59,17 @@ final class GridDiscoveryTest extends TestCase
         ]));
     }
 
+    public function testSkipsMissingPsr4Directories(): void
+    {
+        $loader = new ClassLoader();
+        $loader->addClassMap([FirstGrid::class => __DIR__ . '/FirstGrid.php']);
+        $loader->addPsr4('Missing\\', __DIR__ . '/DirectoryThatDoesNotExist');
+
+        self::assertSame([FirstGrid::class], $this->discoverWithAutoloaders([
+            [$loader, 'loadClass'],
+        ]));
+    }
+
     public function testRejectsAutoloadersWithoutComposer(): void
     {
         $this->expectException(RuntimeException::class);
