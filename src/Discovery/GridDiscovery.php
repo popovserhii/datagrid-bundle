@@ -97,7 +97,11 @@ final class GridDiscovery
     protected function discoverPsr4(ClassLoader $loader)
     {
         $grids = [];
-        foreach ($loader->getPrefixesPsr4() as $prefix => $directories) {
+        $prefixes = $loader->getPrefixesPsr4();
+        // Composer stores the empty PSR-4 prefix separately from named prefixes.
+        $prefixes[''] = $loader->getFallbackDirsPsr4();
+
+        foreach ($prefixes as $prefix => $directories) {
             foreach ($directories as $directory) {
                 foreach ($this->findGridFiles($directory) as $file) {
                     $class = $this->getPsr4Class(
