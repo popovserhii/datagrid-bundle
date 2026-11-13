@@ -33,9 +33,15 @@ class GridRegistry
             return GridManifest::load($manifest);
         }
 
-        $grids = $this->gridDiscovery->discover();
+        return $this->rebuild();
+    }
 
-        $grids = $this->mapping($grids);
+    public function rebuild($cacheDir = null)
+    {
+        $grids = $this->mapping($this->gridDiscovery->discover());
+        $manifest = $cacheDir === null
+            ? $this->getCacheFile()
+            : rtrim($cacheDir, '/\\') . '/' . $this->manifestFile;
 
         GridManifest::dump($grids, $manifest);
 

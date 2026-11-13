@@ -23,7 +23,7 @@ class Remote extends AbstractDataSource
     public function __construct(HttpClientInterface $httpClient, ParameterBagInterface $parameters)
     {
         $this->httpClient = $httpClient;
-        $this->endpoint = (string) $parameters->get('elasticsearch_endpoint');
+        $this->endpoint = (string) $parameters->get('elasticsearch_dns');
         $this->token = (string) $parameters->get('elasticsearch_token');
     }
 
