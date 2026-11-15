@@ -81,7 +81,9 @@ class Paginator implements AdapterInterface
         $response = $this->dataSource->request(['page' => $page, 'itemsPerPage' => $size]);
         $this->total = $response['records'];
         $rows = $response['rows'];
-        if (count($rows) > $size) {
+        if (!empty($response['all_rows'])) {
+            $this->allRows = $rows;
+        } elseif (count($rows) > $size) {
             if (count($rows) !== $this->total) {
                 throw new UnexpectedValueException('Remote listing did not honor the requested page.');
             }
