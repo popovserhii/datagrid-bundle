@@ -14,14 +14,14 @@ final class GridCacheWarmer implements CacheWarmerInterface
         $this->registry = $registry;
     }
 
-    public function warmUp($cacheDir)
+    public function warmUp($cacheDir, ?string $buildDir = null): array
     {
         $this->registry->rebuild($cacheDir);
 
         return [];
     }
 
-    public function isOptional()
+    public function isOptional(): bool
     {
         return false;
     }
