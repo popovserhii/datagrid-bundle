@@ -15,6 +15,7 @@
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
 use Popov\DatagridBundle\Bridge\Symfony\Cache\GridCacheWarmer;
+use Popov\DatagridBundle\Controller\Action\GridSchemaGetListAction;
 use Popov\DatagridBundle\Discovery\GridDiscovery;
 use Popov\DatagridBundle\Discovery\GridRegistry;
 use Popov\DatagridBundle\Discovery\Runtime;
@@ -113,6 +114,8 @@ return static function (ContainerConfigurator $configurator) {
     $services->set(GridRegistry::class);
     $services->set(GridSchema::class);
     $services->set(GridCacheWarmer::class);
+    $services->set(GridSchemaGetListAction::class)
+        ->tag('controller.service_arguments');
     
     $services->set(Datagrid::class)
         ->share(false)

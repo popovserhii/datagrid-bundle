@@ -31,6 +31,10 @@ The top-level structure is always:
 | `id` | string | Grid identifier from `Datagrid::getId()`. The underlying library supplies `"defaultGrid"` when none was set. |
 | `title` | string | Display title. It is not translated by `GridSchema`. |
 | `default_items_per_page` | integer | Default page size. A negative value may be used by the grid implementation for an unlimited result set. |
+| `pagination` | object | Page base, configured HTTP query parameter names and the conventional total-page response path. Query parameter names are `null` when no HTTP renderer is configured. |
+| `sort` | object | HTTP parameters for sort fields and directions, or `null` without renderer configuration. Sortable fields are columns with `sortable: true`; use their `field` values as sort keys. |
+| `response` | object | Conventional row location derived from the Grid ID. |
+| `description`, `action` | string or `null`, object or `null` | Explicit Grid metadata from `parameters.schema`. An HTTP action normally declares `method` and `path`. |
 | `filterable` | boolean | Whether the grid-level user filter UI is enabled. |
 | `parameters` | object or array | Arbitrary external grid parameters, passed through unchanged. Its keys and value types are not a stable schema contract. |
 | `row_styles` | array of style objects | Styles applied to a whole row. The style object contract is defined below. |
@@ -48,6 +52,8 @@ Every exported column is an object with the following fields.
 | Field | JSON type | Meaning |
 | --- | --- | --- |
 | `id` | string | `AbstractColumn::getUniqueId()`. This is the canonical column reference used by styles and action conditions. It can differ from the original source field name, for example `user_id`. |
+| `field` | string | Qualified field key, such as `user.full_name`. It is derived from the Select mnemonic and field without splitting underscores inside the field name. Unqualified keys retain their declared name. The presence of a key does not mean that the field can be filtered. |
+| `description` | string or `null` | Column description from its `schema` renderer parameters, when provided. |
 | `label` | string | Display label without translation. |
 | `type` | type object | Declared logical type, with display settings for supported types. Its shape depends on `type.name`. |
 | `columns` | array of column objects; optional | Child fields of an `ObjectColumn` or `CollectionColumn`, exported recursively with the same column contract. |
@@ -94,13 +100,27 @@ Every exported column is an object with the following fields.
 
 | Field | JSON type | Meaning |
 | --- | --- | --- |
-| `enabled` | boolean | Whether users may filter the column. |
+| `enabled` | boolean | Developer-declared filter availability from `AbstractColumn::isUserFilterEnabled()`. It defaults to `true`; the exporter does not check whether the data source can actually filter this field. |
 | `default_value` | string or `null` | Configured default filter value. |
 | `default_operator` | string | ZfcDatagrid filter expression, such as `"= %s"`, `">= %s"`, or `"~ *%s*"`. This is a grid filter DSL, not an Elasticsearch operator. |
 | `select_options` | object, array, or `null` | Option labels/values when the filter is a select filter. Both sequential and associative arrays are valid. |
 | `active_value` | string or `null` | Current active filter value. |
 
 The available filter expressions include equality, inequality, comparison, like/not-like, inclusion, range, and null checks. An Elasticsearch adapter must translate these expressions explicitly; copying the expression into a query is not valid.
+
+### Configuring filterable fields
+
+Declare a column filterable only when its `field` key addresses a value the data source can filter with the expected meaning. For a virtual or formatted field, the displayed value may differ from the SQL value. In particular, the jqGrid renderer creates a simple `Select` for an expression column when resolving a filter by name; it does not filter the formatter's output. Disable filtering in the Grid when that field has no supported filter implementation:
+
+```php
+$grid->addColumn(
+    (new Select(new Expression('user.is_period_unlocked'), 'user_period_locked_at'))
+        ->addFormatter($lockedPeriodFormatter)
+        ->setUserFilterDisabled()
+);
+```
+
+`GridSchema` will then export `filter.enabled: false`. Apply the same rule to computed JSON/array fields and other derived columns unless their filter keys are deliberately supported by the data source. `filter.enabled` is a client-facing declaration, not server-side authorization or validation of incoming filters.
 
 ## Type object
 

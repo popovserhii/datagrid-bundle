@@ -234,9 +234,17 @@ class Renderer extends JqGrid\Renderer
                     $filterGroup->addFilter($filter);
                 }
             } elseif ($value && $key === 'groups') {
-                //foreach ($value as $sub) {
-                    $filterGroup->addGroup($this->prepareFilters($value));
-                //}
+                // Accept the single-group format used by older callers.
+                if (isset($value['groupOp']) || isset($value['rules']) || isset($value['groups'])) {
+                    $value = [$value];
+                }
+
+                foreach ($value as $sub) {
+                    $group = $this->prepareFilters($sub);
+                    if ($group && ($group->getFilters() || $group->getGroups())) {
+                        $filterGroup->addGroup($group);
+                    }
+                }
             }
         }
 

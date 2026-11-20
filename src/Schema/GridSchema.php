@@ -46,20 +46,46 @@ class GridSchema
     public function create($grid): array
     {
         $datagrid = $this->resolveDatagrid($grid);
+        $columns = $this->columns($datagrid->sortColumns());
+
+        $parameters = $datagrid->getParameters();
+        $metadata = $parameters['schema'] ?? [];
+
+        $options = $datagrid->getOptions();
+        $renderer = $options['settings']['default']['renderer']['http'] ?? null;
+        $parameterNames = $options['renderer'][$renderer]['parameterNames'] ?? [];
+        $gridId = $datagrid->getId();
+
+        $grid = [
+            'id' => $gridId,
+            'title' => $datagrid->getTitle(),
+            'description' => $metadata['description'] ?? null,
+            'action' => $metadata['action'] ?? null,
+            'default_items_per_page' => $datagrid->getDefaultItemsPerPage(),
+            'filterable' => $datagrid->isUserFilterEnabled(),
+            'parameters' => $parameters,
+            'row_styles' => $this->rowStyles($datagrid),
+            'row_click_action' => $this->action($datagrid),
+            'has_mass_actions' => $datagrid->hasMassAction(),
+            'pagination' => [
+                'page_parameter' => $parameterNames['currentPage'] ?? null,
+                'items_per_page_parameter' => $parameterNames['itemsPerPage'] ?? null,
+                'first_page' => 1,
+                'total_pages_path' => 'data.' . $gridId . '.total',
+            ],
+            'sort' => [
+                'by_parameter' => $parameterNames['sortColumns'] ?? null,
+                'order_parameter' => $parameterNames['sortDirections'] ?? null,
+            ],
+            'response' => [
+                'rows_path' => 'data.' . $gridId . '.rows',
+            ],
+        ];
 
         return [
             'schema_version' => self::VERSION,
-            'grid' => [
-                'id' => $datagrid->getId(),
-                'title' => $datagrid->getTitle(),
-                'default_items_per_page' => $datagrid->getDefaultItemsPerPage(),
-                'filterable' => $datagrid->isUserFilterEnabled(),
-                'parameters' => $datagrid->getParameters(),
-                'row_styles' => $this->rowStyles($datagrid),
-                'row_click_action' => $this->action($datagrid),
-                'has_mass_actions' => $datagrid->hasMassAction(),
-            ],
-            'columns' => $this->columns($datagrid->sortColumns()),
+            'grid' => $grid,
+            'columns' => $columns,
         ];
     }
 
@@ -112,9 +138,13 @@ class GridSchema
      */
     protected function column(Column\AbstractColumn $column): array
     {
+        $rendererParameters = $this->rendererParameters($column);
+
         $schema = [
             'id' => (string) $column->getUniqueId(),
+            'field' => $column->getMnemonicId(),
             'label' => $column->getLabel(),
+            'description' => $rendererParameters['schema']['description'] ?? null,
             'type' => $this->type($column->getType()),
             'position' => $column->getPosition(),
             'width' => $column->getWidth(),
@@ -138,7 +168,7 @@ class GridSchema
             'replace_values' => $column->hasReplaceValues() ? $column->getReplaceValues() : null,
             'styles' => $this->styles($column),
             'actions' => $this->actions($column),
-            'renderer_parameters' => $this->rendererParameters($column),
+            'renderer_parameters' => $rendererParameters,
         ];
 
         if ($column instanceof ObjectColumn) {
