@@ -115,7 +115,7 @@ class ObjectColumn extends Column\Select
 
     public function buildSqlJson()
     {
-        [$sql, $doctrine] = $this->getSelectExpression();
+        [$sql, $doctrine] = self::getSelectExpression();
         if ($doctrine) {
             throw new InvalidArgumentException('Doctrine expressions cannot be rendered as Laminas SQL.');
         }

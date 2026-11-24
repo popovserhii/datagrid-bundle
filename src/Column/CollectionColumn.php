@@ -16,9 +16,7 @@
 namespace Popov\DatagridBundle\Column;
 
 use Doctrine\Inflector\InflectorFactory;
-use Doctrine\ORM\Query\Expr;
 use InvalidArgumentException;
-use Laminas\Db\Sql\Expression;
 use Popov\DatagridBundle\Type\JsonCollection;
 use RuntimeException;
 use ZfcDatagrid\Column\Type;
@@ -54,19 +52,17 @@ class CollectionColumn extends ObjectColumn
         return $this->type;
     }
 
-    /** Aggregate the nested object in the same query language. */
-    public function getSelectPart1()
+    /** Aggregate the object before the selected query language wraps it. */
+    protected function getSelectExpression(): array
     {
-        $object = parent::getSelectPart1();
-        if ($object instanceof Expr\Select && $this->sqlTemplate) {
+        [$sql, $doctrine] = parent::getSelectExpression();
+        if ($doctrine && $this->sqlTemplate) {
             throw new InvalidArgumentException('A collection SQL template cannot contain Doctrine expressions.');
         }
 
-        $sql = $object instanceof Expression ? $object->getExpression() : (string) $object;
         $sql = "CONCAT('[', GROUP_CONCAT(DISTINCT " . $sql . "), ']')";
-        $sql = $this->getSqlWrapped($sql);
 
-        return $object instanceof Expr\Select ? new Expr\Select($sql) : new Expression($sql);
+        return [$this->getSqlWrapped($sql), $doctrine];
     }
 
     public function setSqlTemplate($sqlTemplate)
