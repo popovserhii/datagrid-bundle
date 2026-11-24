@@ -15,16 +15,15 @@
 
 namespace Popov\DatagridBundle\Column;
 
-use ZfcDatagrid\Column;
 use Doctrine\ORM\Query\Expr;
+use InvalidArgumentException;
 use Laminas\Db\Sql\Expression;
-use ZfcDatagrid\Column\Type;
+use Laminas\Db\Sql\Literal;
 use Popov\DatagridBundle\Type\JsonObject;
-use ZfcDatagrid\Column\Select;
-use ZfcDatagrid\Datagrid;
+use RuntimeException;
+use ZfcDatagrid\Column;
 use ZfcDatagrid\Column\AbstractColumn;
-use MediaparkLt\CustomerBundle\Entity\Customer;
-use MediaparkLt\ProjectBundle\Entity\Status;
+use ZfcDatagrid\Column\Type;
 
 class ObjectColumn extends Column\Select
 {
@@ -105,10 +104,11 @@ class ObjectColumn extends Column\Select
 
     public function getSelectPart1()
     {
-        $sql = $this->buildSqlJson();
+        [$parts, $type] = $this->getSelectExpression();
 
-        //return new Expr\Select($sql); // @todo-serhii Implement support for both, Doctrine and LaminasTable
-        return new Expression($sql);
+        return $type === Expr\Select::class
+            ? new Expr\Select(implode('', $parts))
+            : $this->composeSql($parts);
     }
 
     public function getSelectPart2()
@@ -118,68 +118,107 @@ class ObjectColumn extends Column\Select
 
     public function buildSqlJson()
     {
-        $selectColumns = $this->getSelectColumns();
-        [$gridId, $primaryName] = $this->getPrimaries();
-
-        $sql = "
-            CASE WHEN {$gridId}.{$primaryName} IS NOT NULL THEN 
-                JSON_OBJECT(" . implode(', ', $selectColumns) . ") 
-            ELSE NULLIF(1,1) END
-        ";
-
-        return $sql;
-    }
-
-    protected function getSelectColumns()
-    {
-        $selectColumns = [];
-        foreach ($this->getColumns() as $column) {
-            $colString = $column->getSelectPart1();
-            if ($column->getSelectPart2() != '') {
-                $colString .= '.' . $column->getSelectPart2();
-            }
-
-            [$entityName, $fieldName] = $this->getUniqueParts($column);
-
-            if ($colString instanceof Expression) {
-                $colString = $colString->getExpression();
-            }
-            $selectColumns[] = "'{$fieldName}'" . ', ' . $colString;
+        [$parts, $type] = self::getSelectExpression();
+        if ($type === Expr\Select::class) {
+            throw new InvalidArgumentException('Doctrine expressions cannot be rendered as Laminas SQL.');
         }
 
-        return $selectColumns;
+        return $this->composeSql($parts)->getExpression();
     }
 
     /**
-     * Determine base grid ID to build appropriate JSON hierarchy
+     * Use the first field's source for both the null check and the JSON value.
      *
-     * First part equals to the Grid ID
-     * Second part equals to the Primary name (aka, field ID)
-     *
-     * @return array
+     * @return array{list<string|Expression|Expr\Select|Expr\Func>, class-string|null}
      */
-    protected function getPrimaries()
+    protected function getSelectExpression(): array
     {
-        $gridId = '';
+        $type = null;
+        $fields = [];
+        $identity = [];
         foreach ($this->getColumns() as $column) {
-            [$gridId, $primaryName] = $this->getUniqueParts($column);
+            [$entityName, $fieldName] = $this->getUniqueParts($column);
+            if ($fields === [] && ($entityName === '' || $fieldName === '')) {
+                break;
+            }
 
-            break;
+            [$source, $childType] = $column instanceof self
+                ? $column->getSelectExpression()
+                : $this->getFieldExpression($column);
+            if ($type !== null && $childType !== null && $type !== $childType) {
+                throw new InvalidArgumentException('Cannot mix Doctrine and Laminas expressions in a nested column.');
+            }
+
+            $type ??= $childType;
+            if ($fields === []) {
+                $identity = $source;
+            } else {
+                $fields[] = ', ';
+            }
+
+            $fields[] = "'" . str_replace("'", "''", $fieldName) . "', ";
+            array_push($fields, ...$source);
         }
 
-        if (empty($primaryName)) {
-            throw new \RuntimeException('Grid ID is not defined. Your grid must have at least one column with entity name as prefix (e.g. customer_id, project_id, etc.).');
+        if ($fields === []) {
+            throw new RuntimeException('The first nested column must have an ID such as customer_id or project_id.');
         }
 
-        return [$gridId, $primaryName];
+        return [
+            ['CASE WHEN ', ...$identity, ' IS NOT NULL THEN JSON_OBJECT(', ...$fields, ') ELSE NULLIF(1,1) END'],
+            $type,
+        ];
+    }
+
+    /**
+     * Keep custom field sources in the caller's query language.
+     *
+     * @todo Move Select source handling to zfc-datagrid.
+     */
+    private function getFieldExpression(AbstractColumn $column): array
+    {
+        $source = $column->getSelectPart1();
+        if (is_string($source) && $column->getSelectPart2() != '') {
+            $source .= '.' . $column->getSelectPart2();
+        }
+
+        $type = match (true) {
+            $source instanceof Expression => Expression::class,
+            $source instanceof Expr\Select, $source instanceof Expr\Func => Expr\Select::class,
+            is_string($source) => null,
+            default => throw new InvalidArgumentException('Unsupported source for a nested Select column.'),
+        };
+
+        return [[$source], $type];
+    }
+
+    /** Leave parameter binding to Laminas when an expression is embedded in JSON. */
+    private function composeSql(array $parts): Expression
+    {
+        $sql = '';
+        $parameters = [];
+        foreach ($parts as $part) {
+            if ($part instanceof Expression && (array) $part->getParameters() !== []) {
+                $parameters[] = $part;
+                $sql .= '?';
+                continue;
+            }
+
+            $text = $part instanceof Expression ? $part->getExpression() : $part;
+            if (str_contains($text, '?')) {
+                $parameters[] = new Literal($text);
+                $sql .= '?';
+                continue;
+            }
+
+            $sql .= $text;
+        }
+
+        return new Expression($sql, $parameters);
     }
 
     protected function getUniqueParts(AbstractColumn $column)
     {
-        $uniqueId = rtrim($column->getUniqueId(), '_');
-        $entityName = strtok($uniqueId, '_');
-        $fieldName = substr($uniqueId, strlen($entityName) + 1);
-
-        return [$entityName, $fieldName];
+        return array_pad(explode('_', rtrim($column->getUniqueId(), '_'), 2), 2, '');
     }
 }

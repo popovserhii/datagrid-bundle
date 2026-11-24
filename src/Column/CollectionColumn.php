@@ -15,12 +15,13 @@
 
 namespace Popov\DatagridBundle\Column;
 
-use RuntimeException;
-use ZfcDatagrid\Column;
+use Doctrine\Inflector\InflectorFactory;
 use Doctrine\ORM\Query\Expr;
+use InvalidArgumentException;
 use Laminas\Db\Sql\Expression;
-use ZfcDatagrid\Column\Type;
 use Popov\DatagridBundle\Type\JsonCollection;
+use RuntimeException;
+use ZfcDatagrid\Column\Type;
 
 class CollectionColumn extends ObjectColumn
 {
@@ -28,8 +29,22 @@ class CollectionColumn extends ObjectColumn
 
     protected $sqlTemplate = '';
 
-    /**
-     */
+    /** Use a plural field name for a collection in the JSON response. */
+    public function setUniqueId($id): self
+    {
+        [$entityName, $fieldName] = array_pad(explode('_', rtrim($id, '_'), 2), 2, '');
+        if ($fieldName === '') {
+            return parent::setUniqueId($id);
+        }
+
+        static $inflector;
+
+        $inflector ??= InflectorFactory::create()->build();
+        parent::setUniqueId($entityName . '_' . $inflector->pluralize($fieldName));
+
+        return $this;
+    }
+
     public function getType(): Type\AbstractType
     {
         if (null === $this->type) {
@@ -39,15 +54,20 @@ class CollectionColumn extends ObjectColumn
         return $this->type;
     }
 
-    public function getSelectPart1()
+    /** Aggregate the object and apply the caller's query template in SQL. */
+    protected function getSelectExpression(): array
     {
-        $sql = $this->buildSqlJson();
-        $sql = "CONCAT('[', GROUP_CONCAT(DISTINCT " . $sql . "), ']')";
+        [$object, $type] = parent::getSelectExpression();
+        $collection = ["CONCAT('[', GROUP_CONCAT(DISTINCT ", ...$object, "), ']')"];
+        if (!$this->sqlTemplate) {
+            return [$collection, $type];
+        }
 
-        $sql = $this->getSqlWrapped($sql);
+        if ($type === Expr\Select::class) {
+            throw new InvalidArgumentException('A collection SQL template cannot contain Doctrine expressions.');
+        }
 
-        //return new Expr\Select($sql); // @todo-serhii Implement support for both, Doctrine and LaminasTable
-        return new Expression($sql);
+        return [$this->getSqlWrapped($collection), Expression::class];
     }
 
     public function setSqlTemplate($sqlTemplate)
@@ -57,20 +77,21 @@ class CollectionColumn extends ObjectColumn
         return $this;
     }
 
-    protected function getSqlWrapped($sql)
+    /** Keep the nested SQL expression intact when it is used in a subquery. */
+    private function getSqlWrapped(array $collection): array
     {
-        if (!$this->sqlTemplate) {
-            // There is nothing to replace. The nested SQL is prepared on the Table level.
-            return $sql;
-        }
-
-        if (strpos($this->sqlTemplate, self::COLUMNS_PLACEHOLDER) === false) {
+        $template = str_replace(':columnConcatenated:', self::COLUMNS_PLACEHOLDER, $this->sqlTemplate);
+        $sections = explode(self::COLUMNS_PLACEHOLDER, $template);
+        if (count($sections) === 1) {
             throw new RuntimeException('The nested SQL template must contain the placeholder ' . self::COLUMNS_PLACEHOLDER);
         }
-        
-        // Replace placeholders
-        $sqlWrapped = str_replace(self::COLUMNS_PLACEHOLDER, $sql, $this->sqlTemplate);
 
-        return $sqlWrapped;
+        $parts = [array_shift($sections)];
+        foreach ($sections as $section) {
+            array_push($parts, ...$collection);
+            $parts[] = $section;
+        }
+
+        return $parts;
     }
 }
