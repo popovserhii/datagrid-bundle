@@ -54,20 +54,19 @@ class CollectionColumn extends ObjectColumn
         return $this->type;
     }
 
-    /** Aggregate the object and apply the caller's query template in SQL. */
-    protected function getSelectExpression(): array
+    /** Aggregate the nested object in the same query language. */
+    public function getSelectPart1()
     {
-        [$object, $type] = parent::getSelectExpression();
-        $collection = ["CONCAT('[', GROUP_CONCAT(DISTINCT ", ...$object, "), ']')"];
-        if (!$this->sqlTemplate) {
-            return [$collection, $type];
-        }
-
-        if ($type === Expr\Select::class) {
+        $object = parent::getSelectPart1();
+        if ($object instanceof Expr\Select && $this->sqlTemplate) {
             throw new InvalidArgumentException('A collection SQL template cannot contain Doctrine expressions.');
         }
 
-        return [$this->getSqlWrapped($collection), Expression::class];
+        $sql = $object instanceof Expression ? $object->getExpression() : (string) $object;
+        $sql = "CONCAT('[', GROUP_CONCAT(DISTINCT " . $sql . "), ']')";
+        $sql = $this->getSqlWrapped($sql);
+
+        return $object instanceof Expr\Select ? new Expr\Select($sql) : new Expression($sql);
     }
 
     public function setSqlTemplate($sqlTemplate)
@@ -77,21 +76,18 @@ class CollectionColumn extends ObjectColumn
         return $this;
     }
 
-    /** Keep the nested SQL expression intact when it is used in a subquery. */
-    private function getSqlWrapped(array $collection): array
+    /** Insert the aggregate into the caller's SQL subquery. */
+    private function getSqlWrapped(string $sql): string
     {
+        if (!$this->sqlTemplate) {
+            return $sql;
+        }
+
         $template = str_replace(':columnConcatenated:', self::COLUMNS_PLACEHOLDER, $this->sqlTemplate);
-        $sections = explode(self::COLUMNS_PLACEHOLDER, $template);
-        if (count($sections) === 1) {
+        if (!str_contains($template, self::COLUMNS_PLACEHOLDER)) {
             throw new RuntimeException('The nested SQL template must contain the placeholder ' . self::COLUMNS_PLACEHOLDER);
         }
 
-        $parts = [array_shift($sections)];
-        foreach ($sections as $section) {
-            array_push($parts, ...$collection);
-            $parts[] = $section;
-        }
-
-        return $parts;
+        return str_replace(self::COLUMNS_PLACEHOLDER, $sql, $template);
     }
 }

@@ -18,7 +18,6 @@ namespace Popov\DatagridBundle\Column;
 use Doctrine\ORM\Query\Expr;
 use InvalidArgumentException;
 use Laminas\Db\Sql\Expression;
-use Laminas\Db\Sql\Literal;
 use Popov\DatagridBundle\Type\JsonObject;
 use RuntimeException;
 use ZfcDatagrid\Column;
@@ -104,11 +103,9 @@ class ObjectColumn extends Column\Select
 
     public function getSelectPart1()
     {
-        [$parts, $type] = $this->getSelectExpression();
+        [$sql, $doctrine] = $this->getSelectExpression();
 
-        return $type === Expr\Select::class
-            ? new Expr\Select(implode('', $parts))
-            : $this->composeSql($parts);
+        return $doctrine ? new Expr\Select($sql) : new Expression($sql);
     }
 
     public function getSelectPart2()
@@ -118,103 +115,54 @@ class ObjectColumn extends Column\Select
 
     public function buildSqlJson()
     {
-        [$parts, $type] = self::getSelectExpression();
-        if ($type === Expr\Select::class) {
+        [$sql, $doctrine] = $this->getSelectExpression();
+        if ($doctrine) {
             throw new InvalidArgumentException('Doctrine expressions cannot be rendered as Laminas SQL.');
         }
 
-        return $this->composeSql($parts)->getExpression();
+        return $sql;
     }
 
     /**
-     * Use the first field's source for both the null check and the JSON value.
+     * Build JSON from the configured Select sources and keys.
      *
-     * @return array{list<string|Expression|Expr\Select|Expr\Func>, class-string|null}
+     * @todo Move Select source handling to zfc-datagrid.
      */
     protected function getSelectExpression(): array
     {
-        $type = null;
         $fields = [];
-        $identity = [];
+        $identity = null;
+        $doctrine = false;
+
         foreach ($this->getColumns() as $column) {
             [$entityName, $fieldName] = $this->getUniqueParts($column);
-            if ($fields === [] && ($entityName === '' || $fieldName === '')) {
-                break;
+            if ($identity === null && ($entityName === '' || $fieldName === '')) {
+                throw new RuntimeException('The first nested column must have an ID such as customer_id or project_id.');
             }
 
-            [$source, $childType] = $column instanceof self
-                ? $column->getSelectExpression()
-                : $this->getFieldExpression($column);
-            if ($type !== null && $childType !== null && $type !== $childType) {
-                throw new InvalidArgumentException('Cannot mix Doctrine and Laminas expressions in a nested column.');
-            }
-
-            $type ??= $childType;
-            if ($fields === []) {
-                $identity = $source;
+            $source = $column->getSelectPart1();
+            if (is_string($source)) {
+                if ($column->getSelectPart2() != '') {
+                    $source .= '.' . $column->getSelectPart2();
+                }
             } else {
-                $fields[] = ', ';
+                $doctrine = $doctrine || $source instanceof Expr\Select || $source instanceof Expr\Func;
+                $source = $source instanceof Expression ? $source->getExpression() : (string) $source;
             }
 
-            $fields[] = "'" . str_replace("'", "''", $fieldName) . "', ";
-            array_push($fields, ...$source);
+            $identity ??= $source;
+            $fields[] = "'" . str_replace("'", "''", $fieldName) . "', " . $source;
         }
 
-        if ($fields === []) {
+        if ($identity === null) {
             throw new RuntimeException('The first nested column must have an ID such as customer_id or project_id.');
         }
 
         return [
-            ['CASE WHEN ', ...$identity, ' IS NOT NULL THEN JSON_OBJECT(', ...$fields, ') ELSE NULLIF(1,1) END'],
-            $type,
+            'CASE WHEN ' . $identity . ' IS NOT NULL THEN JSON_OBJECT(' . implode(', ', $fields)
+                . ') ELSE NULLIF(1,1) END',
+            $doctrine,
         ];
-    }
-
-    /**
-     * Keep custom field sources in the caller's query language.
-     *
-     * @todo Move Select source handling to zfc-datagrid.
-     */
-    private function getFieldExpression(AbstractColumn $column): array
-    {
-        $source = $column->getSelectPart1();
-        if (is_string($source) && $column->getSelectPart2() != '') {
-            $source .= '.' . $column->getSelectPart2();
-        }
-
-        $type = match (true) {
-            $source instanceof Expression => Expression::class,
-            $source instanceof Expr\Select, $source instanceof Expr\Func => Expr\Select::class,
-            is_string($source) => null,
-            default => throw new InvalidArgumentException('Unsupported source for a nested Select column.'),
-        };
-
-        return [[$source], $type];
-    }
-
-    /** Leave parameter binding to Laminas when an expression is embedded in JSON. */
-    private function composeSql(array $parts): Expression
-    {
-        $sql = '';
-        $parameters = [];
-        foreach ($parts as $part) {
-            if ($part instanceof Expression && (array) $part->getParameters() !== []) {
-                $parameters[] = $part;
-                $sql .= '?';
-                continue;
-            }
-
-            $text = $part instanceof Expression ? $part->getExpression() : $part;
-            if (str_contains($text, '?')) {
-                $parameters[] = new Literal($text);
-                $sql .= '?';
-                continue;
-            }
-
-            $sql .= $text;
-        }
-
-        return new Expression($sql, $parameters);
     }
 
     protected function getUniqueParts(AbstractColumn $column)
