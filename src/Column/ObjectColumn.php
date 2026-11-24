@@ -15,16 +15,11 @@
 
 namespace Popov\DatagridBundle\Column;
 
+use RuntimeException;
 use ZfcDatagrid\Column;
-use Doctrine\ORM\Query\Expr;
-use Laminas\Db\Sql\Expression;
 use ZfcDatagrid\Column\Type;
 use Popov\DatagridBundle\Type\JsonObject;
-use ZfcDatagrid\Column\Select;
-use ZfcDatagrid\Datagrid;
 use ZfcDatagrid\Column\AbstractColumn;
-use MediaparkLt\CustomerBundle\Entity\Customer;
-use MediaparkLt\ProjectBundle\Entity\Status;
 
 class ObjectColumn extends Column\Select
 {
@@ -105,10 +100,7 @@ class ObjectColumn extends Column\Select
 
     public function getSelectPart1()
     {
-        $sql = $this->buildSqlJson();
-
-        //return new Expr\Select($sql); // @todo-serhii Implement support for both, Doctrine and LaminasTable
-        return new Expression($sql);
+        return $this->buildSqlJsonExpression();
     }
 
     public function getSelectPart2()
@@ -118,36 +110,31 @@ class ObjectColumn extends Column\Select
 
     public function buildSqlJson()
     {
-        $selectColumns = $this->getSelectColumns();
-        [$gridId, $primaryName] = $this->getPrimaries();
+        return $this->buildSqlJsonExpression()->getExpression();
+    }
+
+    /** Build the object from child sources so the identity expression also controls nullability. */
+    protected function buildSqlJsonExpression(): CompositeExpression
+    {
+        $this->getPrimaries();
+
+        $primaryColumn = reset($this->columns);
+        $selectColumns = [];
+        $parameters = [SelectSource::resolve($primaryColumn)];
+
+        foreach ($this->getColumns() as $column) {
+            [$entityName, $fieldName] = $this->getUniqueParts($column->getUniqueId());
+            $selectColumns[] = "'" . str_replace("'", "''", $fieldName) . "', ?";
+            $parameters[] = SelectSource::resolve($column);
+        }
 
         $sql = "
-            CASE WHEN {$gridId}.{$primaryName} IS NOT NULL THEN 
-                JSON_OBJECT(" . implode(', ', $selectColumns) . ") 
+            CASE WHEN ? IS NOT NULL THEN
+                JSON_OBJECT(" . implode(', ', $selectColumns) . ")
             ELSE NULLIF(1,1) END
         ";
 
-        return $sql;
-    }
-
-    protected function getSelectColumns()
-    {
-        $selectColumns = [];
-        foreach ($this->getColumns() as $column) {
-            $colString = $column->getSelectPart1();
-            if ($column->getSelectPart2() != '') {
-                $colString .= '.' . $column->getSelectPart2();
-            }
-
-            [$entityName, $fieldName] = $this->getUniqueParts($column);
-
-            if ($colString instanceof Expression) {
-                $colString = $colString->getExpression();
-            }
-            $selectColumns[] = "'{$fieldName}'" . ', ' . $colString;
-        }
-
-        return $selectColumns;
+        return new CompositeExpression($sql, $parameters);
     }
 
     /**
@@ -162,21 +149,24 @@ class ObjectColumn extends Column\Select
     {
         $gridId = '';
         foreach ($this->getColumns() as $column) {
-            [$gridId, $primaryName] = $this->getUniqueParts($column);
+            [$gridId, $primaryName] = $this->getUniqueParts($column->getUniqueId());
 
             break;
         }
 
         if (empty($primaryName)) {
-            throw new \RuntimeException('Grid ID is not defined. Your grid must have at least one column with entity name as prefix (e.g. customer_id, project_id, etc.).');
+            throw new RuntimeException('Grid ID is not defined. Your grid must have at least one column with entity name as prefix (e.g. customer_id, project_id, etc.).');
         }
 
         return [$gridId, $primaryName];
     }
 
-    protected function getUniqueParts(AbstractColumn $column)
+    /**
+     * @todo-serhii Reduce code duplication and create one source of truth.
+     */
+    protected function getUniqueParts($id)
     {
-        $uniqueId = rtrim($column->getUniqueId(), '_');
+        $uniqueId = rtrim($id, '_');
         $entityName = strtok($uniqueId, '_');
         $fieldName = substr($uniqueId, strlen($entityName) + 1);
 
