@@ -18,6 +18,8 @@ class GridSchemaGetListAction
     ) {}
 
     /**
+     * @todo Make route path configurable to allow flexible way to authorize snapshot API requests even on the bundle level.
+     *
      * @Route("/api/v1/grids", name="api_grids_list", methods={"GET"})
      * @Route("/api/v1/grids/{gridId}", name="api_grids_get", requirements={"gridId"="\w+"}, methods={"GET"})
      */

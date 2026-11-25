@@ -15,16 +15,14 @@
 
 namespace Popov\DatagridBundle\Column;
 
-use ZfcDatagrid\Column;
 use Doctrine\ORM\Query\Expr;
+use InvalidArgumentException;
 use Laminas\Db\Sql\Expression;
-use ZfcDatagrid\Column\Type;
 use Popov\DatagridBundle\Type\JsonObject;
-use ZfcDatagrid\Column\Select;
-use ZfcDatagrid\Datagrid;
+use RuntimeException;
+use ZfcDatagrid\Column;
 use ZfcDatagrid\Column\AbstractColumn;
-use MediaparkLt\CustomerBundle\Entity\Customer;
-use MediaparkLt\ProjectBundle\Entity\Status;
+use ZfcDatagrid\Column\Type;
 
 class ObjectColumn extends Column\Select
 {
@@ -105,81 +103,71 @@ class ObjectColumn extends Column\Select
 
     public function getSelectPart1()
     {
-        $sql = $this->buildSqlJson();
-
-        //return new Expr\Select($sql); // @todo-serhii Implement support for both, Doctrine and LaminasTable
-        return new Expression($sql);
+        return $this->getSelectExpression();
     }
 
-    public function getSelectPart2()
+    /** Wrap the completed JSON in the selected query language. */
+    protected function getSelectExpression(): Expression|Expr\Select
     {
-        return '';
+        [$sql, $doctrine] = $this->buildJson();
+
+        return $doctrine ? new Expr\Select($sql) : new Expression($sql);
     }
 
     public function buildSqlJson()
     {
-        $selectColumns = $this->getSelectColumns();
-        [$gridId, $primaryName] = $this->getPrimaries();
-
-        $sql = "
-            CASE WHEN {$gridId}.{$primaryName} IS NOT NULL THEN 
-                JSON_OBJECT(" . implode(', ', $selectColumns) . ") 
-            ELSE NULLIF(1,1) END
-        ";
+        [$sql, $doctrine] = self::buildJson();
+        if ($doctrine) {
+            throw new InvalidArgumentException('Doctrine expressions cannot be rendered as Laminas SQL.');
+        }
 
         return $sql;
     }
 
-    protected function getSelectColumns()
-    {
-        $selectColumns = [];
-        foreach ($this->getColumns() as $column) {
-            $colString = $column->getSelectPart1();
-            if ($column->getSelectPart2() != '') {
-                $colString .= '.' . $column->getSelectPart2();
-            }
-
-            [$entityName, $fieldName] = $this->getUniqueParts($column);
-
-            if ($colString instanceof Expression) {
-                $colString = $colString->getExpression();
-            }
-            $selectColumns[] = "'{$fieldName}'" . ', ' . $colString;
-        }
-
-        return $selectColumns;
-    }
-
     /**
-     * Determine base grid ID to build appropriate JSON hierarchy
+     * Build JSON from the configured Select sources and keys.
      *
-     * First part equals to the Grid ID
-     * Second part equals to the Primary name (aka, field ID)
-     *
-     * @return array
+     * @todo Move Select source handling to zfc-datagrid.
      */
-    protected function getPrimaries()
+    protected function buildJson(): array
     {
-        $gridId = '';
+        $fields = [];
+        $identity = null;
+        $doctrine = false;
+
         foreach ($this->getColumns() as $column) {
-            [$gridId, $primaryName] = $this->getUniqueParts($column);
+            [$entityName, $fieldName] = $this->getUniqueParts($column);
+            if ($identity === null && ($entityName === '' || $fieldName === '')) {
+                throw new RuntimeException('The first nested column must have an ID such as customer_id or project_id.');
+            }
 
-            break;
+            $source = $column->getSelectPart1();
+            if (is_string($source)) {
+                if ($column->getSelectPart2() != '') {
+                    $source .= '.' . $column->getSelectPart2();
+                }
+            } else {
+                $doctrine = $doctrine || $source instanceof Expr\Select || $source instanceof Expr\Func;
+                $source = $source instanceof Expression ? $source->getExpression() : (string) $source;
+            }
+
+            $identity ??= $source;
+            $fields[] = "'" . str_replace("'", "''", $fieldName) . "', " . $source;
         }
 
-        if (empty($primaryName)) {
-            throw new \RuntimeException('Grid ID is not defined. Your grid must have at least one column with entity name as prefix (e.g. customer_id, project_id, etc.).');
+        if ($identity === null) {
+            throw new RuntimeException('The first nested column must have an ID such as customer_id or project_id.');
         }
 
-        return [$gridId, $primaryName];
+        return [
+            'CASE WHEN ' . $identity . ' IS NOT NULL THEN' .
+            ' JSON_OBJECT(' . implode(', ', $fields) . ') ELSE NULLIF(1,1) END',
+            $doctrine,
+        ];
     }
 
     protected function getUniqueParts(AbstractColumn $column)
     {
-        $uniqueId = rtrim($column->getUniqueId(), '_');
-        $entityName = strtok($uniqueId, '_');
-        $fieldName = substr($uniqueId, strlen($entityName) + 1);
-
-        return [$entityName, $fieldName];
+        return array_pad(explode('_', rtrim($column->getUniqueId(), '_'), 2), 2, '');
     }
 }

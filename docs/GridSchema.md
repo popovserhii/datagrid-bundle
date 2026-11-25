@@ -57,6 +57,7 @@ Every exported column is an object with the following fields.
 | `label` | string | Display label without translation. |
 | `type` | type object | Declared logical type, with display settings for supported types. Its shape depends on `type.name`. |
 | `columns` | array of column objects; optional | Child fields of an `ObjectColumn` or `CollectionColumn`, exported recursively with the same column contract. |
+| `canonical_name` | string; optional | Original source name of an `ObjectColumn` or `CollectionColumn`. For collections it remains singular and resolves the nested filter path. |
 | `position` | integer or `null` | Configured display position. Columns added through `Datagrid::addColumn()` normally receive the default position `1`. |
 | `width` | number | Display width, expressed by ZfcDatagrid as a percentage-like relative value. |
 | `hidden` | boolean | Column visibility. |
@@ -162,6 +163,8 @@ The exporter does not include `Number` patterns and formatter attributes, `DateT
 | `CollectionColumn` | `JsonCollection` | `collection` | `nested` |
 
 Both columns provide their default type through `getType()`, independently of SQL generation. A developer can explicitly set a type with `setType()`. `CollectionColumn` extends `ObjectColumn`, so the existing recursive export handles both. The mapper reads the exported names; it has no dependency on these PHP classes.
+
+Structured columns export `getSelectPart2()` as `canonical_name`. `CollectionColumn` accepts this name in singular form and pluralizes its response ID. For example, `new CollectionColumn('branch', 'project')` exports `id: "project_branches"`, `field: "project.branch"`, and `canonical_name: "branch"`. The source name is part of the standard schema rather than a renderer parameter.
 
 ```json
 {

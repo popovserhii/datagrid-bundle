@@ -172,6 +172,7 @@ class GridSchema
         ];
 
         if ($column instanceof ObjectColumn) {
+            $schema['canonical_name'] = $column->getSelectPart2();
             $schema['columns'] = $this->columns($column->getColumns());
         }
 
