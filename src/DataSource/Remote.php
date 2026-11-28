@@ -7,12 +7,17 @@ use Popov\DatagridBundle\DataSource\Remote\Paginator;
 use Popov\DatagridBundle\DataSource\Remote\Request;
 use Popov\DatagridBundle\DataSource\Remote\Response;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
+use UnexpectedValueException;
 use ZfcDatagrid\DataSource\AbstractDataSource;
 
 /** Forwards the grid's final conditions and returns remote rows unchanged. */
 class Remote extends AbstractDataSource
 {
+    private const LISTING_TYPE = 'application/vnd.timebase.grid-list+json';
+
     private $httpClient;
     private $endpoint;
     private $resource;
@@ -107,6 +112,48 @@ class Remote extends AbstractDataSource
     /** @internal Used by the paginator adapter. */
     public function request(array $pagination = []): array
     {
+        $data = $this->send($pagination, ['Accept' => 'application/json'])->toArray();
+
+        return (new Response())->decode($data, $this->resource);
+    }
+
+    /** Relay the ready-to-serve Grid body while a failed read can still fall back to SQL. */
+    public function listingResponse(string $acceptEncoding): HttpResponse
+    {
+        $upstream = $this->send([], [
+            'Accept' => self::LISTING_TYPE,
+            'Accept-Encoding' => $acceptEncoding ?: 'identity',
+        ]);
+        $headers = [
+            'Vary' => 'Accept-Encoding',
+            'Cache-Control' => 'private, no-store',
+            'Access-Control-Allow-Origin' => '*',
+        ];
+        if ($upstream->getStatusCode() === HttpResponse::HTTP_NOT_ACCEPTABLE) {
+            return new HttpResponse('', HttpResponse::HTTP_NOT_ACCEPTABLE, $headers);
+        }
+
+        $received = $upstream->getHeaders();
+        if ($upstream->getStatusCode() !== HttpResponse::HTTP_OK
+            || self::LISTING_TYPE !== strtolower(trim(explode(';', $received['content-type'][0] ?? '', 2)[0]))) {
+            throw new UnexpectedValueException('Expected a public Grid listing.');
+        }
+
+        $body = $upstream->getContent();
+        if ($body === '' || (isset($received['content-length']) && (string) strlen($body) !== $received['content-length'][0])) {
+            throw new UnexpectedValueException('Incomplete public Grid listing.');
+        }
+
+        return new HttpResponse($body, HttpResponse::HTTP_OK, $headers + [
+            'Content-Type' => 'application/json',
+            'Content-Encoding' => $received['content-encoding'][0] ?? 'identity',
+            'Content-Length' => (string) strlen($body),
+        ]);
+    }
+
+    /** Send the prepared filters and ordering for either remote representation. */
+    private function send(array $pagination, array $headers): ResponseInterface
+    {
         if (null === $this->query) {
             $this->execute();
         }
@@ -117,10 +164,8 @@ class Remote extends AbstractDataSource
 
         $options = [
             'query' => array_merge($query, $pagination),
-            'headers' => [
-                'Accept' => 'application/json',
-                'filters' => $filters
-            ],
+            'headers' => $headers + ['filters' => $filters],
+            'buffer' => false,
             'timeout' => 30,
             'max_duration' => 120,
             'max_redirects' => 0,
@@ -129,9 +174,7 @@ class Remote extends AbstractDataSource
             $options['auth_bearer'] = $this->token;
         }
 
-        $data = $this->httpClient->request('GET', $this->endpoint . '/api/v1/' . $this->resource, $options)->toArray();
-
-        return (new Response())->decode($data, $this->resource);
+        return $this->httpClient->request('GET', $this->endpoint . '/api/v1/' . $this->resource, $options);
     }
 
     private function assertPage(array $response, int $page, int $total): void
